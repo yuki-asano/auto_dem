@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!-- embrio control server only: the roseus RPC node and the HTTP server in front of it.
+     The robot side still comes from the stock `roslaunch auto_dem fr3_dielec.launch`
+     on the robot machine, which this file deliberately leaves untouched. Do not run the
+     stock `auto_dem.launch` at the same time unless the press-PC trigger
+     (/start_dielectrometer_manip) is meant to move the arm as well.
+     devices picks what the server serves: any of dem,fr3,camera. -->
+<launch>
+  <arg name="port" default="8302" />
+  <arg name="devices" default="dem,fr3,camera" />
+
+  <node name="auto_dem_embrio_manip" pkg="auto_dem" type="auto_dem_embrio_node.l" output="screen" />
+  <node name="auto_dem_http" pkg="auto_dem" type="auto_dem_http_server.py"
+        args="--port $(arg port) --devices $(arg devices)" output="screen" />
+</launch>
