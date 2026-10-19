@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+
+<launch>
+  <arg name="rviz" default="true"/>
+  <arg name="gui" default="true" />
+  <arg name="camera" default="false"/>
+  <arg name="connect_robot" default="false" />
+
+  <!-- auto_dem environment -->
+  <group ns="auto_dem">
+    <node if="$(arg gui)"     name="joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" />
+    <node unless="$(arg gui)" name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+
+    <param name="robot_description" command="$(find xacro)/xacro $(find auto_dem)/models/auto_dem.urdf.xacro" />
+
+  </group>
+
+  <!-- Camera -->
+  <!-- <include if="$(arg camera)" file="$(find realsense_utils)/launch/d435i_recognition.launch" /> -->
+
+  <!-- rviz -->
+  <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz" args="-d $(find auto_dem)/config/auto_dem.rviz" />
+
+</launch>

@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="dielectrometer_workstand" >
+
+  <xacro:include filename="$(find auto_dem)/models/dielectrometer.urdf.xacro" />
+
+  <!-- yaml setting -->
+  <xacro:property name="yaml" value="$(find auto_dem)/models/dielectrometer_workstand.yaml" />
+  <xacro:property name="p" value="${xacro.load_yaml(yaml)}" />
+
+
+  <!-- extract yaml param -->
+  <xacro:property name="dielectrometer_workstand_origin_name" value="${p['origin']['name']}" />
+
+  <xacro:property name="dielectrometer_name"        value="${p['dielectrometer']['name']}" />
+  <xacro:property name="dielectrometer_parent_name" value="${p['dielectrometer']['parent_name']}" />
+  <xacro:property name="dielectrometer_pos_x"       value="${p['dielectrometer']['offset_xyz'][0]}" />
+  <xacro:property name="dielectrometer_pos_y"       value="${p['dielectrometer']['offset_xyz'][1]}" />
+  <xacro:property name="dielectrometer_pos_z"       value="${p['dielectrometer']['offset_xyz'][2]}" />
+
+  <xacro:property name="polymer_gp_name"        value="${p['polymer_gp']['name']}" />
+  <xacro:property name="polymer_gp_parent_name" value="${p['polymer_gp']['parent_name']}" />
+  <xacro:property name="polymer_gp_pos_x"       value="${p['polymer_gp']['offset_xyz'][0]}" />
+  <xacro:property name="polymer_gp_pos_y"       value="${p['polymer_gp']['offset_xyz'][1]}" />
+  <xacro:property name="polymer_gp_pos_z"       value="${p['polymer_gp']['offset_xyz'][2]}" />
+
+  <xacro:property name="polymer_rp_name"        value="${p['polymer_rp']['name']}" />
+  <xacro:property name="polymer_rp_parent_name" value="${p['polymer_rp']['parent_name']}" />
+  <xacro:property name="polymer_rp_pos_x"       value="${p['polymer_rp']['offset_xyz'][0]}" />
+  <xacro:property name="polymer_rp_pos_y"       value="${p['polymer_rp']['offset_xyz'][1]}" />
+  <xacro:property name="polymer_rp_pos_z"       value="${p['polymer_rp']['offset_xyz'][2]}" />
+
+
+  <!-- urdf tree definiiton -->
+  <!-- workstand -->
+  <link name="${dielectrometer_workstand_origin_name}" >
+    <inertial>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <mass value="200.0"/>
+     <inertia ixx="10.0"  ixy="0.0"  ixz="0.0" iyy="10.0" iyz="0.0" izz="10.0" />
+    </inertial>
+    <visual>
+     <origin xyz="0 0 0" rpy="0 0 0" />
+     <geometry>
+       <mesh filename="file://$(find auto_dem)/models/meshes/dielectrometer_workstand.dae" scale="1 1 1"/>
+     </geometry>
+    </visual>
+    <collision>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+       <mesh filename="file://$(find auto_dem)/models/meshes/dielectrometer_workstand.dae" scale="1 1 1"/>
+     </geometry>
+    </collision>
+  </link>
+
+  <!-- origin to dielectrometer -->
+  <joint name="origin_to_dielectrometer" type="fixed">
+    <origin xyz="${dielectrometer_pos_x} ${dielectrometer_pos_y} ${dielectrometer_pos_z}" rpy="0 0 0" />
+    <parent link="${dielectrometer_parent_name}"/>
+    <child link="${dielectrometer_name}" />
+  </joint>
+
+  <!-- NOTE -->
+  <!-- skip link difinition of dielectrometer which is defined in dielectrometer.urdf.xacro (link should be unique in urdf tree) -->
+
+
+  <!-- origin to polymer_gp -->
+  <joint name="${polymer_gp_name}" type="fixed">
+    <origin xyz="${polymer_gp_pos_x} ${polymer_gp_pos_y} ${polymer_gp_pos_z}" rpy="0 0 0" />
+    <parent link="${polymer_gp_parent_name}" />
+    <child link="${polymer_gp_name}" />
+    <axis xyz="0 0 1"/>
+    <limit lower="0.1" upper="0.1" effort="0.1" velocity="0.1" />
+  </joint>
+
+  <link name="${polymer_gp_name}">
+    <visual>
+      <geometry>
+        <box size="0.01 0.01 0.01" />
+      </geometry>
+      <material name="Red">
+        <color rgba="1 0 0 1" />
+      </material>
+    </visual>
+  </link>
+
+  <!-- origin to polymer_rp -->
+  <joint name="${polymer_rp_name}" type="fixed">
+    <origin xyz="${polymer_rp_pos_x} ${polymer_rp_pos_y} ${polymer_rp_pos_z}" rpy="0 0 0" />
+    <parent link="${polymer_rp_parent_name}" />
+    <child link="${polymer_rp_name}" />
+    <axis xyz="0 0 1"/>
+    <limit lower="0.1" upper="0.1" effort="0.1" velocity="0.1" />
+  </joint>
+
+  <link name="${polymer_rp_name}">
+    <visual>
+      <geometry>
+        <box size="0.01 0.01 0.01" />
+      </geometry>
+      <material name="Red">
+        <color rgba="1 0 0 1" />
+      </material>
+    </visual>
+  </link>
+
+</robot>

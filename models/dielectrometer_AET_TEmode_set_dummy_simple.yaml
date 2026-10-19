@@ -1,0 +1,14 @@
+origin:
+  name: "DIELECTROMETER_BODY"
+10G_ip:
+  name       : "10G_ip"
+  parent_name: "DIELECTROMETER_BODY"
+  offset_xyz : ['0.0000', '0.1720', '0.1130']
+28G_ip:
+  name       : "28G_ip"
+  parent_name: "DIELECTROMETER_BODY"
+  offset_xyz : ['0.0000', '-0.0080', '0.1130']
+40G_ip:
+  name       : "40G_ip"
+  parent_name: "DIELECTROMETER_BODY"
+  offset_xyz : ['0.0000', '-0.1840', '0.1130']

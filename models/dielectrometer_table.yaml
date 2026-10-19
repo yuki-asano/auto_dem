@@ -1,0 +1,12 @@
+origin:
+  name: "DIELECTROMETER_TABLE_BODY"
+table:
+  name         : "DIELECTROMETER_TABLE_1800_900_700_BODY"
+  parent_name  : "DIELECTROMETER_TABLE_BODY"
+  offset_xyz   : ['0.0000', '0.0000', '0.0000']
+  rotation_rpy : ['0.0000', '0.0000', '0.0000']
+dielectrometer_workstand:
+  name         : "DIELECTROMETER_WORKSTAND_BODY"
+  parent_name  : "DIELECTROMETER_TABLE_BODY"
+  offset_xyz   : ['0.0000', '0.0000', '0.0000']
+  rotation_rpy : ['0.0000', '0.0000', '0.0000']

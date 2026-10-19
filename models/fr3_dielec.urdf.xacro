@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="fr3_dielec">
+  <!-- paremeters -->
+  <xacro:arg name="fr3_dielec_id"     default="fr3" />
+  <xacro:arg name="fr3_dielec_origin" default="fr3_dielec_origin" />
+  <xacro:arg name="fr3_dielec_hand"   default="true" />
+  <xacro:property name="fr3_dielec_joint_limits" default="${xacro.load_yaml('$(find franka_description)/robots/$(arg fr3_dielec_id)/joint_limits.yaml')}" />
+
+  <!-- franka_arm_pedestal -->
+  <xacro:include filename="$(find franka_arm)/models/franka_arm_pedestal.urdf.xacro" />
+  <xacro:franka_arm_pedestal
+      franka_arm_pedestal_id          ="$(arg fr3_dielec_id)"
+      franka_arm_pedestal_origin      ="$(arg fr3_dielec_origin)"
+      franka_arm_pedestal_joint_limits="${fr3_dielec_joint_limits}"
+      franka_arm_pedestal_hand        ="$(arg fr3_dielec_hand)" />
+</robot>

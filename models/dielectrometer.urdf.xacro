@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="dielectrometer" >
+
+  <xacro:property name="yaml" value="$(find auto_dem)/models/dielectrometer_AET_TEmode_set_dummy_simple.yaml" />
+  <xacro:property name="p" value="${xacro.load_yaml(yaml)}" />
+
+  <xacro:property name="dielectrometer_origin_name" value="${p['origin']['name']}" />
+
+  <xacro:property name="dielectrometer_10G_ip_name"        value="${p['10G_ip']['name']}" />
+  <xacro:property name="dielectrometer_10G_ip_parent_name" value="${p['10G_ip']['parent_name']}" />
+  <xacro:property name="dielectrometer_10G_ip_pos_x"       value="${p['10G_ip']['offset_xyz'][0]}" />
+  <xacro:property name="dielectrometer_10G_ip_pos_y"       value="${p['10G_ip']['offset_xyz'][1]}" />
+  <xacro:property name="dielectrometer_10G_ip_pos_z"       value="${p['10G_ip']['offset_xyz'][2]}" />
+
+  <xacro:property name="dielectrometer_28G_ip_name"        value="${p['28G_ip']['name']}" />
+  <xacro:property name="dielectrometer_28G_ip_parent_name" value="${p['28G_ip']['parent_name']}" />
+  <xacro:property name="dielectrometer_28G_ip_pos_x"       value="${p['28G_ip']['offset_xyz'][0]}" />
+  <xacro:property name="dielectrometer_28G_ip_pos_y"       value="${p['28G_ip']['offset_xyz'][1]}" />
+  <xacro:property name="dielectrometer_28G_ip_pos_z"       value="${p['28G_ip']['offset_xyz'][2]}" />
+
+  <xacro:property name="dielectrometer_40G_ip_name"        value="${p['40G_ip']['name']}" />
+  <xacro:property name="dielectrometer_40G_ip_parent_name" value="${p['40G_ip']['parent_name']}" />
+  <xacro:property name="dielectrometer_40G_ip_pos_x"       value="${p['40G_ip']['offset_xyz'][0]}" />
+  <xacro:property name="dielectrometer_40G_ip_pos_y"       value="${p['40G_ip']['offset_xyz'][1]}" />
+  <xacro:property name="dielectrometer_40G_ip_pos_z"       value="${p['40G_ip']['offset_xyz'][2]}" />
+
+  <link name="${dielectrometer_origin_name}">
+    <inertial>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <mass value="200.0"/>
+     <inertia ixx="10.0"  ixy="0.0"  ixz="0.0" iyy="10.0" iyz="0.0" izz="10.0" />
+    </inertial>
+    <visual>
+     <origin xyz="0 0 0" rpy="0 0 0" />
+     <geometry>
+       <mesh filename="file://$(find auto_dem)/models/meshes/dielectrometer_AET_TEmode_set_dummy_simple.dae" scale="1 1 1"/>
+     </geometry>
+    </visual>
+    <collision>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+       <mesh filename="file://$(find auto_dem)/models/meshes/dielectrometer_AET_TEmode_set_dummy_simple.dae" scale="1 1 1"/>
+     </geometry>
+    </collision>
+  </link>
+
+  <joint name="${dielectrometer_10G_ip_name}" type="fixed">
+    <origin xyz="${dielectrometer_10G_ip_pos_x} ${dielectrometer_10G_ip_pos_y} ${dielectrometer_10G_ip_pos_z}" rpy="0 0 0" />
+    <parent link="${dielectrometer_10G_ip_parent_name}" />
+    <child link="${dielectrometer_10G_ip_name}" />
+    <axis xyz="0 0 1"/>
+    <limit lower="0.1" upper="0.1" effort="0.1" velocity="0.1" />
+  </joint>
+
+  <link name="${dielectrometer_10G_ip_name}">
+    <visual>
+      <geometry>
+        <box size="0.01 0.01 0.01" />
+      </geometry>
+      <material name="Red">
+        <color rgba="1 0 0 1" />
+      </material>
+    </visual>
+  </link>
+
+  <joint name="${dielectrometer_28G_ip_name}" type="fixed">
+    <origin xyz="${dielectrometer_28G_ip_pos_x} ${dielectrometer_28G_ip_pos_y} ${dielectrometer_28G_ip_pos_z}" rpy="0 0 0" />
+    <parent link="${dielectrometer_28G_ip_parent_name}" />
+    <child link="${dielectrometer_28G_ip_name}" />
+    <axis xyz="0 0 1"/>
+    <limit lower="0.1" upper="0.1" effort="0.1" velocity="0.1" />
+  </joint>
+
+  <link name="${dielectrometer_28G_ip_name}">
+    <visual>
+      <geometry>
+        <box size="0.01 0.01 0.01" />
+      </geometry>
+      <material name="Red">
+        <color rgba="1 0 0 1" />
+      </material>
+    </visual>
+  </link>
+
+  <joint name="${dielectrometer_40G_ip_name}" type="fixed">
+    <origin xyz="${dielectrometer_40G_ip_pos_x} ${dielectrometer_40G_ip_pos_y} ${dielectrometer_40G_ip_pos_z}" rpy="0 0 0" />
+    <parent link="${dielectrometer_40G_ip_parent_name}" />
+    <child link="${dielectrometer_40G_ip_name}" />
+    <axis xyz="0 0 1"/>
+    <limit lower="0.1" upper="0.1" effort="0.1" velocity="0.1" />
+  </joint>
+
+  <link name="${dielectrometer_40G_ip_name}">
+    <visual>
+      <geometry>
+        <box size="0.01 0.01 0.01" />
+      </geometry>
+      <material name="Red">
+        <color rgba="1 0 0 1" />
+      </material>
+    </visual>
+  </link>
+
+</robot>

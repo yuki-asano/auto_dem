@@ -1,0 +1,22 @@
+<package format="2">
+  <name>auto_dem</name>
+  <version>0.1.0</version>
+  <description> Automated dielectric measurement </description>
+
+  <maintainer email="yasano@g.ecc.u-tokyo.ac.jp">Yuki Asano</maintainer>
+  <author email="yasano@g.ecc.u-tokyo.ac.jp">Yuki Asano</author>
+
+  <license>BSD 3-Clause</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+
+  <depend>franka_arm</depend>
+  <depend>panda_eus</depend>
+  <depend>eus_assimp</depend>
+
+  <depend>aet_instrument</depend>
+
+</package>

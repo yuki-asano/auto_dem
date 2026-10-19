@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="dielectrometer_table_1800_900_700_body" >
+  <link name="DIELECTROMETER_TABLE_1800_900_700_BODY">
+    <inertial>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <mass value="15.0"/>
+     <inertia ixx="5.0"  ixy="0.0"  ixz="0.0" iyy="5.0" iyz="0.0" izz="0.5" />
+    </inertial>
+    <visual>
+     <origin xyz="0 0 0" rpy="0 0 0" />
+     <geometry>
+       <mesh filename="file://$(find auto_dem)/models/meshes/table-1800-900-700.dae" scale="1 1 1"/>
+     </geometry>
+    </visual>
+    <collision>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+       <mesh filename="file://$(find auto_dem)/models/meshes/table-1800-900-700.dae" scale="1 1 1"/>
+     </geometry>
+    </collision>
+  </link>
+</robot>

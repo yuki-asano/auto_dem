@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="auto_dem" >
+  <!-- load table -->
+  <xacro:include filename="$(find auto_dem)/models/dielectrometer_table.urdf.xacro" />
+
+  <!-- load fr3 -->
+  <xacro:property name="auto_dem_robot_origin" value="fr3_dielec_origin" />
+  <xacro:include filename="$(find auto_dem)/models/fr3_dielec.urdf.xacro" />
+
+  <!-- yaml setting -->
+  <xacro:property name="yaml" value="$(find auto_dem)/models/auto_dem.yaml" />
+  <xacro:property name="p" value="${xacro.load_yaml(yaml)}" />
+
+
+  <!-- extract yaml param -->
+  <xacro:property name="auto_dem_origin_name" value="${p['origin']['name']}" />
+
+  <xacro:property name="dielectrometer_table_name"        value="${p['dielectrometer_table']['name']}" />
+  <xacro:property name="dielectrometer_table_parent_name" value="${p['dielectrometer_table']['parent_name']}" />
+  <xacro:property name="dielectrometer_table_pos_x"       value="${p['dielectrometer_table']['offset_xyz'][0]}" />
+  <xacro:property name="dielectrometer_table_pos_y"       value="${p['dielectrometer_table']['offset_xyz'][1]}" />
+  <xacro:property name="dielectrometer_table_pos_z"       value="${p['dielectrometer_table']['offset_xyz'][2]}" />
+  <xacro:property name="dielectrometer_table_rot_r"       value="${p['dielectrometer_table']['rotation_rpy'][0]}" />
+  <xacro:property name="dielectrometer_table_rot_p"       value="${p['dielectrometer_table']['rotation_rpy'][1]}" />
+  <xacro:property name="dielectrometer_table_rot_y"       value="${p['dielectrometer_table']['rotation_rpy'][2]}" />
+
+
+  <!-- urdf tree definiiton -->
+  <link name="${auto_dem_origin_name}"/>
+
+  <!-- origin to table -->
+  <joint name="dielectrometer_origin_to_dielectrometer_table_joint" type="fixed">
+    <origin xyz="${dielectrometer_table_pos_x} ${dielectrometer_table_pos_y} ${dielectrometer_table_pos_z}"
+            rpy="${dielectrometer_table_rot_r} ${dielectrometer_table_rot_p} ${dielectrometer_table_rot_y} " />
+    <parent link="${dielectrometer_table_parent_name}"/>
+    <child link="${dielectrometer_table_name}" />
+  </joint>
+
+  <!-- origin to fr3 robot -->
+  <joint name="dielectrometer_origin_to_fr3_joint" type="fixed">
+    <origin xyz="0 0 0"
+            rpy="0 0 0" />
+    <parent link="${dielectrometer_table_parent_name}"/>
+    <child  link="${auto_dem_robot_origin}" />
+  </joint>
+
+</robot>

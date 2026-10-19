@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="dielectrometer_table" >
+  <xacro:include filename="$(find auto_dem)/models/dielectrometer_table_1800_900_700.urdf.xacro" />
+  <xacro:include filename="$(find auto_dem)/models/dielectrometer_workstand.urdf.xacro" />
+
+  <!-- yaml setting -->
+  <xacro:property name="yaml" value="$(find auto_dem)/models/dielectrometer_table.yaml" />
+  <xacro:property name="p" value="${xacro.load_yaml(yaml)}" />
+
+
+  <!-- extract yaml param -->
+  <xacro:property name="dielectrometer_table_origin_name" value="${p['origin']['name']}" />
+
+  <xacro:property name="table_name"        value="${p['table']['name']}" />
+  <xacro:property name="table_parent_name" value="${p['table']['parent_name']}" />
+  <xacro:property name="table_pos_x"       value="${p['table']['offset_xyz'][0]}" />
+  <xacro:property name="table_pos_y"       value="${p['table']['offset_xyz'][1]}" />
+  <xacro:property name="table_pos_z"       value="${p['table']['offset_xyz'][2]}" />
+
+  <xacro:property name="dielectrometer_workstand_name"        value="${p['dielectrometer_workstand']['name']}" />
+  <xacro:property name="dielectrometer_workstand_parent_name" value="${p['dielectrometer_workstand']['parent_name']}" />
+  <xacro:property name="dielectrometer_workstand_pos_x"       value="${p['dielectrometer_workstand']['offset_xyz'][0]}" />
+  <xacro:property name="dielectrometer_workstand_pos_y"       value="${p['dielectrometer_workstand']['offset_xyz'][1]}" />
+  <xacro:property name="dielectrometer_workstand_pos_z"       value="${p['dielectrometer_workstand']['offset_xyz'][2]}" />
+
+
+  <!-- urdf tree definiiton -->
+  <!-- dielectrometer table -->
+  <link name="${dielectrometer_table_origin_name}" />
+
+  <joint name="origin_to_dielectormeter_table" type="fixed">
+    <origin xyz="${table_pos_x} ${table_pos_y} ${table_pos_z}" rpy="0 0 0" />
+    <parent link="${table_parent_name}"/>
+    <child link="${table_name}" />
+  </joint>
+
+  <joint name="origin_to_dielectrometer_workstand" type="fixed">
+    <origin xyz="${dielectrometer_workstand_pos_x} ${dielectrometer_workstand_pos_y} ${dielectrometer_workstand_pos_z}" rpy="0 0 0" />
+    <parent link="${dielectrometer_workstand_parent_name}"/>
+    <child link="${dielectrometer_workstand_name}" />
+  </joint>
+
+</robot>

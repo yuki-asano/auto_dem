@@ -1,0 +1,7 @@
+origin:
+  name: "auto_dem_origin"
+dielectrometer_table:
+  name         : "DIELECTROMETER_TABLE_BODY"
+  parent_name  : "auto_dem_origin"
+  offset_xyz   : ['1.3050', '0.9510', '0.7000']
+  rotation_rpy : ['0.0000', '0.0000', '3.1400']
