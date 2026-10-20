@@ -1,4 +1,9 @@
 # auto_dem
+## Setup
+```
+git@github.com:yuki-asano/auto_dem.git
+```
+
 
 ## Experiment procedure
 ### Robot setup
