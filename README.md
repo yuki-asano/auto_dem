@@ -1,8 +1,6 @@
 # auto_dem
-## Setup
-```
-git@github.com:yuki-asano/auto_dem.git
-```
+## Install & Setup
+- https://github.com/yuki-asano/auto_dem/wiki/Install-&-Setup
 
 
 ## Experiment procedure
