@@ -22,7 +22,7 @@
   (warn "Start dielectrometer_manip_node~%")
 
   ;; generate instance
-  ;;(setq *dem* (instance dielectrometer-manip :init))
+  (setq *dem* (instance dielectrometer-manip :init))
 
   ;; draw
   (objects *display-objects*)
