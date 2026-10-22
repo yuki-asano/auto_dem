@@ -104,9 +104,13 @@ end-coords とは独立です。
 | GET | `/fr3/pose` | `{"joints": [7], "position": [6], "gripper_mm"}` |
 | POST | `/fr3/move-joints` | `{"joints": [7], "speed": deg/s}`。所要時間は最大関節差 ÷ speed（最短 0.5 s）。到達後に読み戻し、1 deg を超えて外れていればエラー |
 | POST | `/fr3/move-position` | `{"position": [6], "speed": mm/s, "step_mm": mm}`。直線を `step_mm` 刻みに分け、全点の IK が解けてから動く（解けなければ動かずエラー）。到達後に 2 mm / 2 deg で検証 |
-| POST | `/fr3/gripper/move` | `{"position": mm, "speed": mm/s, "force": N}` → `{"achieved": mm}`。閉じる向きは grasp アクション（物で止まっても `force` で保持）、開く向きは move アクション |
+| POST | `/fr3/gripper/move` | `{"position": mm, "speed": mm/s}` → `{"achieved": mm}`。move アクションで指定幅へ動かす。アクションが失敗を返せばエラー |
+| POST | `/fr3/gripper/grasp` | `{"width": mm, "speed": mm/s, "force": N, "epsilon_inner": mm, "epsilon_outer": mm}` → `{"achieved": mm}`。grasp アクションで物に当たるまで閉じ、`force` で保持する。止まった幅が `width - epsilon_inner` 〜 `width + epsilon_outer`（既定は各 5 mm）に入らなければエラー（物が無く全閉した場合も含む） |
 | GET | `/fr3/gripper/position` | `{"position": mm}` |
 | POST | `/fr3/abort` | `/abort` と同じ |
+
+`achieved` はアクションの完了直後ではなく、幅が 0.3 s 動かなくなってから読みます（完了直後の値は指の動きに
+遅れるため）。3 s 待っても落ち着かなければエラーです。
 
 ### カメラの中継（`camera`）
 
@@ -152,7 +156,7 @@ curl http://<lion>:8302/status
 - `/abort` が `:wait-interpolation` の途中で届くこと（robot-interface の待ちループが `ros::spin-once` を
   回していることが前提）。届かない場合は、動作の区切りまで止まりません。
 - 計測待ち（`unix::usleep` の 20 秒）の間は中断が届かないこと。
-- grasp アクションで物に当たって止まったときの到達幅（`achieved`）の読み値。
+- `/fr3/gripper/grasp` で物をつかんだときの `achieved` と成否。
 - `/fr3/move-position` の直線分割（既定 5 mm）で、分割点の間の経路が直線からどれだけ外れるか。
 - roseus ノードの irtviewer に必要な DISPLAY が、lion の運用環境（リモート起動時）で得られること。
 

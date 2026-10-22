@@ -8,7 +8,8 @@
 ;;   (pose)                                   -> joints [deg] x7, position [x y z roll pitch yaw] (mm/deg), gripper_mm
 ;;   (move_joints :joints (7 values) :speed deg/s)
 ;;   (move_position :position (6 values) :speed mm/s :step_mm mm)   straight line, piecewise IK
-;;   (gripper_move :position mm :speed mm/s :force N)              -> achieved mm
+;;   (gripper_move :position mm :speed mm/s)                       -> achieved mm, move action
+;;   (gripper_grasp :width mm :speed mm/s :force N :epsilon_inner mm :epsilon_outer mm) -> achieved mm
 ;;   (gripper_position)
 ;;   (run_measurement :thickness mm :sample_name s :file_path s :do_measure t :insert_until_contact t :measure_times n)
 ;; Reply: {"ok": true, "result": ...} | {"ok": false, "error": "..."}
@@ -25,6 +26,12 @@
 (defvar *embrio-position-tolerance-mm* 2.0)
 (defvar *embrio-rotation-tolerance-deg* 2.0)
 (defvar *embrio-gripper-open-max-m* 0.08)
+;; The width read right after the action returns still trails the fingers, so it is re-read
+;; until it holds still.
+(defvar *embrio-gripper-settle-mm* 0.05)
+(defvar *embrio-gripper-settle-polls* 6)
+(defvar *embrio-gripper-settle-max-polls* 60)
+(defvar *embrio-gripper-poll-us* 50000)
 
 ;; Own TCP on the hand link: the upstream end-coords is re-oriented for the dielectrometer
 ;; insertion, so the embrio side keeps a plain hand-axis frame instead.
@@ -97,10 +104,11 @@
       (error "request must be (name :key value ...)"))
     form))
 
-(defun embrio-arg (args key &optional (default nil default-p))
+;; EusLisp has no supplied-p for &optional, hence the sentinel.
+(defun embrio-arg (args key &optional (default :embrio-required))
   (let ((m (member key args)))
     (cond (m (cadr m))
-          (default-p default)
+          ((not (eq default :embrio-required)) default)
           (t (error "missing argument ~a" key)))))
 
 (defun embrio-number (v what)
@@ -208,21 +216,48 @@
         (error "arm stopped ~a mm / ~a deg short of the target" dp dr))
       (list (cons "position" (embrio-pose-of *embrio-tcp*))))))
 
+(defun embrio-gripper-width-m (v what)
+  (let ((m (/ (embrio-number v what) 1000.0)))
+    (unless (<= 0.0 m *embrio-gripper-open-max-m*)
+      (error "~a must be between 0 and ~a mm" what (* 1000.0 *embrio-gripper-open-max-m*)))
+    m))
+
+(defun embrio-gripper-settled-mm ()
+  (let ((last (embrio-gripper-mm)) (still 0) (polls 0))
+    (while (< still *embrio-gripper-settle-polls*)
+      (when (>= polls *embrio-gripper-settle-max-polls*)
+        (error "gripper width did not settle within ~a ms (last ~a mm)"
+               (/ (* *embrio-gripper-settle-max-polls* *embrio-gripper-poll-us*) 1000) last))
+      (unix:usleep *embrio-gripper-poll-us*)
+      (incf polls)
+      (let ((w (embrio-gripper-mm)))
+        (if (> (abs (- w last)) *embrio-gripper-settle-mm*)
+            (setq still 0 last w)
+          (incf still))))
+    last))
+
+(defun embrio-check-gripper-result (res what)
+  (unless res (error "~a action returned no result" what))
+  (unless (send res :success)
+    (error "~a failed at ~a mm: ~a" what (embrio-gripper-settled-mm) (send res :error))))
+
 (defun embrio-gripper-move (args)
-  (let* ((width (embrio-number (embrio-arg args :position) "position"))
-         (speed (embrio-positive (embrio-arg args :speed) "speed"))
-         (force (embrio-positive (embrio-arg args :force) "force"))
-         (width-m (/ width 1000.0))
-         (speed-m (/ speed 1000.0)))
-    (unless (<= 0.0 width-m *embrio-gripper-open-max-m*)
-      (error "position must be between 0 and ~a mm" (* 1000.0 *embrio-gripper-open-max-m*)))
-    (embrio-sync-model)
-    ;; Closing goes through the grasp action so jaws stopped by an object still hold with `force`.
-    (if (< width (embrio-gripper-mm))
-        (send *ri* :send-gripper-grasp-action :rarm width-m speed-m force :inner width-m :outer *embrio-gripper-open-max-m*)
-      (send *ri* :send-gripper-move-action :rarm width-m speed-m))
-    (embrio-sync-model)
-    (list (cons "achieved" (embrio-gripper-mm)))))
+  (let ((width-m (embrio-gripper-width-m (embrio-arg args :position) "position"))
+        (speed-m (/ (embrio-positive (embrio-arg args :speed) "speed") 1000.0)))
+    (send *ri* :send-gripper-move-action :rarm width-m speed-m)
+    (embrio-check-gripper-result (send *ri* :get-move-gripper-result :rarm) "move")
+    (list (cons "achieved" (embrio-gripper-settled-mm)))))
+
+;; Success means the jaws stopped on something within [width - inner, width + outer].
+(defun embrio-gripper-grasp (args)
+  (let ((width-m (embrio-gripper-width-m (embrio-arg args :width) "width"))
+        (speed-m (/ (embrio-positive (embrio-arg args :speed) "speed") 1000.0))
+        (force (embrio-positive (embrio-arg args :force) "force"))
+        (inner-m (/ (embrio-positive (embrio-arg args :epsilon_inner) "epsilon_inner") 1000.0))
+        (outer-m (/ (embrio-positive (embrio-arg args :epsilon_outer) "epsilon_outer") 1000.0)))
+    (send *ri* :send-gripper-grasp-action :rarm width-m speed-m force :inner inner-m :outer outer-m)
+    (embrio-check-gripper-result (send *ri* :get-start-grasp-result :rarm) "grasp")
+    (list (cons "achieved" (embrio-gripper-settled-mm)))))
 
 (defun embrio-gripper-position (args)
   (embrio-sync-model)
@@ -254,6 +289,7 @@
         (cons "move_joints" 'embrio-move-joints)
         (cons "move_position" 'embrio-move-position)
         (cons "gripper_move" 'embrio-gripper-move)
+        (cons "gripper_grasp" 'embrio-gripper-grasp)
         (cons "gripper_position" 'embrio-gripper-position)
         (cons "run_measurement" 'embrio-run-measurement)))
 

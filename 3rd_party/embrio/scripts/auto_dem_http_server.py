@@ -39,7 +39,9 @@ API (JSON over HTTP):
     GET  /fr3/pose          {"joints": [7 deg], "position": [x y z roll pitch yaw], "gripper_mm"}
     POST /fr3/move-joints   {"joints": [7], "speed": deg/s}
     POST /fr3/move-position {"position": [6], "speed": mm/s, "step_mm": mm}
-    POST /fr3/gripper/move  {"position": mm, "speed": mm/s, "force": N} -> {"achieved": mm}
+    POST /fr3/gripper/move  {"position": mm, "speed": mm/s} -> {"achieved": mm}
+    POST /fr3/gripper/grasp {"width": mm, "speed": mm/s, "force": N,
+                             "epsilon_inner": mm, "epsilon_outer": mm} -> {"achieved": mm}
     GET  /fr3/gripper/position
     POST /fr3/abort         same as /abort
     POST /camera/*          see embrio_camera.py
@@ -84,6 +86,8 @@ DEFAULT_PARAMS = {
     "measure_times": 1,
 }
 MEASURE_TIMES_MAX = 10
+# libfranka's own default for both sides of the grasp window.
+GRASP_EPSILON_MM = 5.0
 
 # Path prefix -> relay, for the devices being served.
 RELAYS = {}
@@ -140,6 +144,15 @@ def validate_positive(body, key, default=None):
         raise ValueError("%s is required" % key)
     if not _is_number(value) or value <= 0:
         raise ValueError("%s must be a number > 0" % key)
+    return float(value)
+
+
+def validate_non_negative(body, key):
+    value = body.get(key)
+    if value is None:
+        raise ValueError("%s is required" % key)
+    if not _is_number(value) or value < 0:
+        raise ValueError("%s must be a number >= 0" % key)
     return float(value)
 
 
@@ -504,9 +517,15 @@ class Handler(BaseHTTPRequestHandler):
                                    step_mm=validate_positive(body, "step_mm", 5.0))
                 elif self.path == "/fr3/gripper/move":
                     self._arm_call("gripper_move", MOVE_TIMEOUT_S,
-                                   position=validate_positive(body, "position"),
+                                   position=validate_non_negative(body, "position"),
+                                   speed=validate_positive(body, "speed"))
+                elif self.path == "/fr3/gripper/grasp":
+                    self._arm_call("gripper_grasp", MOVE_TIMEOUT_S,
+                                   width=validate_non_negative(body, "width"),
                                    speed=validate_positive(body, "speed"),
-                                   force=validate_positive(body, "force"))
+                                   force=validate_positive(body, "force"),
+                                   epsilon_inner=validate_positive(body, "epsilon_inner", GRASP_EPSILON_MM),
+                                   epsilon_outer=validate_positive(body, "epsilon_outer", GRASP_EPSILON_MM))
                 else:
                     self._reply(404, {"error": "not found: %s" % self.path})
             except ValueError as e:
