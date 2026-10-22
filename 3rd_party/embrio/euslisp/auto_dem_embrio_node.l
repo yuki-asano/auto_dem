@@ -37,15 +37,15 @@
 
 (defun embrio-json-string (s)
   (let ((out (make-string-output-stream)))
-    (write-char #\" out)
+    (write-byte #\" out)
     (dotimes (i (length s))
       (let ((c (char s i)))
-        (cond ((= c #\") (write-string "\\\"" out))
-              ((= c #\\) (write-string "\\\\" out))
-              ((= c 10) (write-string "\\n" out))
-              ((< c 32) (write-char #\space out))
-              (t (write-char c out)))))
-    (write-char #\" out)
+        (cond ((= c #\") (princ "\\\"" out))
+              ((= c #\\) (princ "\\\\" out))
+              ((= c 10) (princ "\\n" out))
+              ((< c 32) (write-byte #\space out))
+              (t (write-byte c out)))))
+    (write-byte #\" out)
     (get-output-stream-string out)))
 
 (defun embrio-json-object-p (v)
@@ -74,8 +74,16 @@
 
 ;; --- errors: the default handler would drop into the debugger and freeze the node ---
 
+(defvar *embrio-in-call* nil)
+
+;; Outside a call there is no :embrio-error catcher, so fall back to roseus' print-and-exit.
 (defun embrio-error-handler (code msg1 form &optional (msg2))
-  (throw :embrio-error (list :error (format nil "~a~a" msg1 (if msg2 (format nil " ~a" msg2) "")))))
+  (unless *embrio-in-call*
+    (ros::roseus-error code msg1 form msg2))
+  (throw :embrio-error
+         (list :error (cond ((null msg2) msg1)
+                            ((zerop (length msg1)) (format nil "~a" msg2))
+                            (t (format nil "~a ~a" msg1 msg2))))))
 
 (lisp::install-error-handler 'embrio-error-handler)
 
@@ -253,7 +261,8 @@
   (let ((outcome
          (catch :embrio-abort
            (catch :embrio-error
-             (let* ((form (embrio-parse text))
+             (let* ((*embrio-in-call* t)
+                    (form (embrio-parse text))
                     (name (string-downcase (symbol-name (car form))))
                     (handler (cdr (assoc name *embrio-handlers* :test #'string=))))
                (unless handler (error "unknown method ~a" name))
