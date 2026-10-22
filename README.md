@@ -78,3 +78,15 @@ roseus dielectrometer-manip.l
 (measure-10-28-40-ntimes-each :measure-times 3 :thickness 0.320 :sample-name "sample3" :file-path "C:/Users/test/Desktop/asano/robot_exp.csv" :insert-until-contact t)
 (send *ri* :stop-grasp :rarm)
 ```
+
+## Citation
+```
+@INPROCEEDINGS{auto_dem:Asano:IROS2024,
+  author={Yuki Asano and Kei Okada and Junichiro Shiomi},
+  booktitle={2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, 
+  title={Robotic Measurement for Electrical Property of Polymers by Force-Sensing Robot toward Materials Lab-Automation}, 
+  year={2024},
+  pages={2319-2324},
+  doi={10.1109/IROS58592.2024.10802186}
+}
+```
