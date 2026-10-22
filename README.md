@@ -48,7 +48,7 @@ DielectricCalculatorを起動
 roscore
 
 [TERMINAL2]
-roslaunch wsl2_ros_bridge connect.launch remote_host:=192.168.0.24 connections_file:="/home/utokyo/catkin_ws/src/wsl2_ros_bridge/example/connections_mod.csv"  # remote_host -> lion
+roslaunch wsl2_ros_bridge connect.launch remote_host:=192.168.0.44 connections_file:="/home/utokyo/catkin_ws/src/wsl2_ros_bridge/example/connections_mod.csv"  # remote_host -> lion
 
 [TERMINAL3]　<- 管理者権限で実行
 rosrun aet_instrument control.py
