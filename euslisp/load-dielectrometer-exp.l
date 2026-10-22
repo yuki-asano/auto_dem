@@ -6,7 +6,7 @@
 (fr3-dielec-init)
 
 ;; Environment
-(load "package://machine_description/models/auto_dem/auto_dem.l")  ;; including dielectrometer and table
+(load "package://auto_dem/models/auto_dem.l")  ;; including dielectrometer and table
 (auto_dem)
 (setq *auto_dem_env* *auto_dem*)
 

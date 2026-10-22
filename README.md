@@ -1,11 +1,19 @@
 # auto_dem
+## Install & Setup
+- https://github.com/yuki-asano/auto_dem/wiki/Install-&-Setup
+
 
 ## Experiment procedure
-### Robot setup
+### Hardware setup
+**Robot**
 - Set fr3 robot to the initial placement.
 - Setup fr3 using Desk interface (unlock joints and activate FCI) 
 
-### Robot machine (tiger)
+**Dielectrometer**
+- Turn on
+
+### Software setup
+**Robot PC (tiger)**
 ```
 [TERMINAL1]
 roscore
@@ -14,44 +22,46 @@ roscore
 roslaunch auto_dem fr3_dielec.launch
 ```
 
-### Operation machine (lion)
+**Manager PC (lion)**
 ```
 [TERMINAL1]
 roslaunch auto_dem auto_dem.launch  # rosbridge_server, robot_manip
-
-[TERMINAL2]  # for press process combination and roscore separation (due to collision of joint_controllers)
-roslaunch wsl2_ros_bridge connect.launch remote_host:=192.168.0.6 connections_file:="/home/utokyo/catkin_ws/src/auto_dem/config/connections_fr3.csv" local_port:=9080 # 192.168.0.6: koala (PC for press process operation)
 ```
 
-- dilect command to manip node  
+- backup for press process combination
+    roscore separation (due to collision of joint_controllers)
     ```
-    rostopic pub -1 /start_dielectrometer_manip std_msgs/Bool "data: true"  # publish topic to manip node
+    [TERMINAL2]
+    roslaunch wsl2_ros_bridge connect.launch remote_host:=192.168.0.6 connections_file:="/home/utokyo/catkin_ws/src/auto_dem/config/connections_fr3.csv" local_port:=9080 # 192.168.0.6: koala (PC for press process operation)
     ```
 
-otherwise, only for robot manip
-```
-roscd auto_dem/euslisp
-roseus dielectrometer-manip.l
-```
-
-### Dielectrometer machine (WSL)
+**Measurement PC (WSL)**
 ```
 [GUI]
-ShockLine.exeを起動
+ShockLine.exeを管理者権限で起動
 
 [TERMINAL1]
 roscore
 
 [TERMINAL2]
-roslaunch wsl2_ros_bridge connect.launch remote_host:=192.168.0.24 connections_file:="/home/utokyo/catkin_ws/src/wsl2_ros_bridge/example/connections_mod.csv"  # remote_host -> lion
+roslaunch wsl2_ros_bridge connect.launch remote_host:=192.168.0.44 connections_file:="/home/utokyo/catkin_ws/src/wsl2_ros_bridge/example/connections_mod.csv"  # remote_host -> lion
 
 [TERMINAL3]　<- 管理者権限で実行
 rosrun aet_instrument control.py
 ```
 
+### Automation demo
+```
+rostopic pub -1 /start_dielectrometer_manip std_msgs/Bool "data: true"  # publish topic to manip node
+```
 
-### Experiment commands (benchmark function)
-Below should be executed on the operation machine 
+### Demo commands (benchmark function)
+ロボット動作単独テスト. Manager PCで以下を実行
+```
+roscd auto_dem/euslisp
+roseus dielectrometer-manip.l
+```
+
 ```
 [exp for sample1]
 (send *ri* :start-grasp :rarm)

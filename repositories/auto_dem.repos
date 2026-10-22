@@ -1,0 +1,18 @@
+repositories:
+  # Dielectrometer
+  aet_instrument:
+    type: git
+    url: git@github.com:asanolab/aet_instrument.git
+  # Robot
+  robot_control:
+    type: git
+    url: git@github.com:asanolab/robot_control.git
+  #
+  # for collada(.dae) import
+  # - for Ubuntu 20.04 (assimp v5.1 is not available with deb)
+  # - v5.1 (or above) is necessary to avoid bug in v5.0
+  # - https://github.com/assimp/assimp/issues/4213
+  assimp:
+    type: git
+    url: git@github.com:assimp/assimp.git
+    version: v5.1.0

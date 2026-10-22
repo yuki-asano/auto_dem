@@ -595,7 +595,7 @@
 (defun measure-10G
     (&key (thickness 0.3)
           (sample-name "sample")
-          (file-path "C:/Users/test/Desktop/asano/test_file.csv")  ;; Windows
+          (file-path "C:/Users/test/Desktop/auto_dem/test_file.csv")  ;; Windows
           (start-reset-pose t)
           (start-reset-pose-time 5000)
           (end-reset-pose t)
@@ -615,7 +615,7 @@
 (defun measure-28G
     (&key (thickness 0.3)
           (sample-name "sample")
-          (file-path "C:/Users/test/Desktop/asano/test_file.csv")  ;; Windows
+          (file-path "C:/Users/test/Desktop/auto_dem/test_file.csv")  ;; Windows
           (start-reset-pose t)
           (start-reset-pose-time 7000)
           (end-reset-pose t)
@@ -635,7 +635,7 @@
 (defun measure-40G
     (&key (thickness 0.3)
           (sample-name "sample")
-          (file-path "C:/Users/test/Desktop/asano/test_file.csv")  ;; Windows
+          (file-path "C:/Users/test/Desktop/auto_dem/test_file.csv")  ;; Windows
           (start-reset-pose t)
           (start-reset-pose-time 7000)
           (end-reset-pose t)
@@ -656,7 +656,7 @@
     (&key
      (thickness 0.3)
      (sample-name "sample")
-     (file-path "C:/Users/test/Desktop/asano/test_file.csv")  ;; Windows
+     (file-path "C:/Users/test/Desktop/auto_dem/test_file.csv")  ;; Windows
      (do-measure t)
      (insert-until-contact nil)
      )
@@ -674,7 +674,7 @@
      (measure-times 3)
      (thickness 0.3)
      (sample-name "sample")
-     (file-path "C:/Users/test/Desktop/asano/test_file.csv")  ;; Windows
+     (file-path "C:/Users/test/Desktop/auto_dem/test_file.csv")  ;; Windows
      (do-measure t)
      (insert-until-contact nil)
      )
@@ -706,7 +706,7 @@
     (&key
      (thickness 0.3)
      (sample-name "sample")
-     (file-path "C:/Users/test/Desktop/asano/test_file.csv")  ;; Windows
+     (file-path "C:/Users/test/Desktop/auto_dem/test_file.csv")  ;; Windows
      (do-measure nil)
      (insert-until-contact nil)
      )
@@ -725,7 +725,7 @@
      (measure-times 3)
      (thickness 0.3)
      (sample-name "sample")
-     (file-path "C:/Users/test/Desktop/asano/test_file.csv")  ;; Windows
+     (file-path "C:/Users/test/Desktop/auto_dem/test_file.csv")  ;; Windows
      (do-measure t)
      (insert-until-contact nil)
      )
