@@ -5,6 +5,21 @@ authors:
   given-names: "Yuki"
 title: "auto_dem"
 version: 0.1.0
-doi: 10.5281/zenodo.1234
 date-released: 2026-10-21
 url: "https://github.com/yuki-asano/auto_dem"
+preferred-citation:
+  type: conference-paper
+  authors:
+  - family-names: "Asano"
+    given-names: "Yuki"
+  - family-names: "Okada"
+    given-names: "Kei"
+  - family-names: "Shiomi"
+    given-names: "Junichiro"
+  doi: "10.1109/IROS58592.2024.10802186"
+  journal: "2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)"
+  month: 10
+  start: 2319 # First page number
+  end: 2324 # Last page number
+  title: "Robotic Measurement for Electrical Property of Polymers by Force-Sensing Robot toward Materials Lab-Automation"
+  year: 2024
