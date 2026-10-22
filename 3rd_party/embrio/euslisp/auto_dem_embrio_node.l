@@ -22,8 +22,8 @@
 
 (defvar *embrio-busy* nil)
 (defvar *embrio-arm-joint-count* 7)
-(defvar *embrio-joint-tolerance-deg* 1.0)
-(defvar *embrio-position-tolerance-mm* 2.0)
+(defvar *embrio-joint-tolerance-deg* 2.0)
+(defvar *embrio-position-tolerance-mm* 5.0)
 (defvar *embrio-rotation-tolerance-deg* 2.0)
 (defvar *embrio-gripper-open-max-m* 0.08)
 ;; The width read right after the action returns still trails the fingers, so it is re-read

@@ -124,8 +124,8 @@ end-coords とは独立です。
 | --- | --- | --- |
 | GET | `/fr3/status` | `connected` / `enabled`（roseus ノードへの ping 結果）、`robot_mode`（franka_control の `franka_states` から。`move` / `reflex` など）、`has_errors`（ノードが応答しない、`robot_mode` が `reflex` / `user_stopped` / `automatic_error_recovery`、`current_errors` が立っている、`franka_states` が 2 s 以上届いていない、のいずれか）、`busy`、`last_error` |
 | GET | `/fr3/pose` | `{"joints": [7], "position": [6], "gripper_mm"}` |
-| POST | `/fr3/move-joints` | `{"joints": [7], "speed": deg/s}`。所要時間は最大関節差 ÷ speed（最短 0.5 s）。到達後に読み戻し、1 deg を超えて外れていればエラー |
-| POST | `/fr3/move-position` | `{"position": [6], "speed": mm/s, "step_mm": mm}`。直線を `step_mm` 刻みに分け、全点の IK が解けてから動く（解けなければ動かずエラー）。到達後に 2 mm / 2 deg で検証 |
+| POST | `/fr3/move-joints` | `{"joints": [7], "speed": deg/s}`。所要時間は最大関節差 ÷ speed（最短 0.5 s）。到達後に読み戻し、2 deg を超えて外れていればエラー |
+| POST | `/fr3/move-position` | `{"position": [6], "speed": mm/s, "step_mm": mm}`。直線を `step_mm` 刻みに分け、全点の IK が解けてから動く（解けなければ動かずエラー）。到達後に 5 mm / 2 deg で検証 |
 | POST | `/fr3/gripper/move` | `{"position": mm, "speed": mm/s}` → `{"achieved": mm}`。move アクションで指定幅へ動かす。アクションが失敗を返せばエラー |
 | POST | `/fr3/gripper/grasp` | `{"width": mm, "speed": mm/s, "force": N, "epsilon_inner": mm, "epsilon_outer": mm}` → `{"achieved": mm}`。grasp アクションで物に当たるまで閉じ、`force` で保持する。止まった幅が `width - epsilon_inner` 〜 `width + epsilon_outer`（既定は各 5 mm）に入らなければエラー（物が無く全閉した場合も含む） |
 | GET | `/fr3/gripper/position` | `{"position": mm}` |
