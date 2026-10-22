@@ -41,8 +41,6 @@ roseus dielectrometer-manip.l
 ```
 [GUI]
 ShockLine.exeを管理者権限で起動
-DielectricCalculatorを起動
-
 
 [TERMINAL1]
 roscore
