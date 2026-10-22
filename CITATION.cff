@@ -17,7 +17,7 @@ preferred-citation:
     given-names: "Kei"
   - family-names: "Shiomi"
     given-names: "Junichiro"
-  doi: ""10.1109/IROS58592.2024.10802186
+  doi: "10.1109/IROS58592.2024.10802186"
   journal: "2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)"
   month: 10
   start: 2319 # First page number
