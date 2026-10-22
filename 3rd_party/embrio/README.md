@@ -2,7 +2,7 @@
 
 auto_dem の計測シーケンス（ポリマー膜のピックアップ → 10 / 28 / 40 GHz の誘電率計測）を
 **別 PC から起動・監視する**ための HTTP サーバと、それを euslisp の実装へつなぐ roseus ノードです。
-株式会社 embrio 側のラボオーケストレータから auto_dem をリモート実行するために追加しました。
+合同会社 embrio 側のラボオーケストレータから auto_dem をリモート実行するために追加しました。
 
 同じサーバが **FR3 の基本動作**（姿勢の読み出し・関節移動・直線移動・グリッパ）と、
 この PC に接続した **USB カメラ**の中継も行います。embrio 側は AMR で運んだトレイを FR3 で受け取り、
@@ -37,24 +37,46 @@ FR3 を動かす口もありませんでした。このサーバはその入口�
 
 ## 起動方法
 
-ロボット側（tiger: `roscore` と `roslaunch auto_dem fr3_dielec.launch`）と誘電率計側（WSL の
-`wsl2_ros_bridge` と `aet_instrument`）は**従来どおり**起動してください。操作 PC（lion）では
-`roslaunch auto_dem auto_dem.launch` の**代わりに**、catkin workspace を source した端末から:
+操作 PC（lion）では `roslaunch auto_dem auto_dem.launch` の**代わりに**
+`roslaunch auto_dem auto_dem_http_server.launch` を起動します。この launch は `auto_dem.launch` と同じ
+rosbridge（9090 番）を含み、`dielectrometer_manip` ノードだけを embrio 用のノードに置き換えたものです。
+それ以外の PC の手順は上流の README のとおりで、**起動する順番だけ守ってください。**
+
+1. ロボット PC（tiger）: `roscore`、`roslaunch auto_dem fr3_dielec.launch`
+2. 操作 PC（lion）: `roslaunch auto_dem auto_dem_http_server.launch`（下記）
+3. 誘電率計 PC（WSL）: ShockLine、`roscore`、`roslaunch wsl2_ros_bridge connect.launch remote_host:=<lion> ...`、
+   `rosrun aet_instrument control.py`
+
+**2 は 3 より先に起動します。** 誘電率計 PC は `wsl2_ros_bridge`（rosbridge どうしを roslibpy でつなぐ
+パッケージ）で lion の rosbridge に接続して `/dielectrometer_cmd` を受け取ります。このノードは起動時に
+lion の rosbridge へつなぎに行き、つながらなければ connect.launch ごと終了します。同じ理由で、
+**lion 側を再起動したら誘電率計 PC の connect.launch も起動し直してください。**
+
+lion では catkin workspace を source した端末（`auto_dem.launch` を起動していたのと同じ端末）から:
 
 ```bash
+# auto_dem が見つかるか確認（パスが出れば source 済み）
+rospack find auto_dem
+# 見つからなければ source する（~/.bashrc に書いてあれば不要）
+source ~/catkin_ws/devel/setup.bash
+
 # launch ファイルから（rosbridge + roseus ノード + HTTP サーバ）
 roslaunch auto_dem auto_dem_http_server.launch
 roslaunch auto_dem auto_dem_http_server.launch port:=8302
 
-# 個別に起動する場合（rosbridge は auto_dem.launch と同じく別途必要）
+# 個別に起動する場合（rosbridge も別途起動する）
 roslaunch rosbridge_server rosbridge_websocket.launch
 rosrun auto_dem auto_dem_embrio_node.l
 rosrun auto_dem auto_dem_http_server.py --port 8302
 ```
 
-この launch は `auto_dem.launch` の rosbridge をそのまま含み、`dielectrometer_manip` ノードだけを
-embrio 用のノードに置き換えたものです。誘電率計 PC は lion の rosbridge 経由で `/dielectrometer_cmd`
-を受け取るので、rosbridge が無いと腕は動いても計測器が動きません（エラーにもなりません）。
+誘電率計 PC がつながったかは lion で確認できます。`/dielectrometer_cmd` の Subscribers に
+rosbridge のノードが出ていれば、計測器まで指令が届きます。出ていないまま計測を始めると、腕は動いても
+計測器は動きません（指令は送りっぱなしなので、エラーにもなりません）。
+
+```bash
+rostopic info /dielectrometer_cmd
+```
 
 既存の `roslaunch auto_dem auto_dem.launch` は**同時に起動しない**でください。rosbridge のポートが
 衝突するうえ、プレス PC からのトピックでも腕が動きます。
