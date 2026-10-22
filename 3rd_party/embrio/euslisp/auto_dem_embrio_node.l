@@ -6,12 +6,14 @@
 ;; Service /embrio/auto_dem/call (roseus/StringString)
 ;;   (ping)
 ;;   (pose)                                   -> joints [deg] x7, position [x y z roll pitch yaw] (mm/deg), gripper_mm
-;;   (move_joints :joints (7 values) :speed deg/s)
+;;   (move_joints :joints (7 values) :speed deg/s [:linear_speed mm/s])   with linear_speed the TCP runs a
+;;                                            straight line to where those joints put it, then the joints settle
 ;;   (move_position :position (6 values) :speed mm/s :step_mm mm)   straight line, piecewise IK
 ;;   (gripper_move :position mm :speed mm/s)                       -> achieved mm, move action
 ;;   (gripper_grasp :width mm :speed mm/s :force N :epsilon_inner mm :epsilon_outer mm) -> achieved mm
 ;;   (gripper_position)
-;;   (run_measurement [:thickness mm] [:sample_name s] [:file_path s] :do_measure t :insert_until_contact t :measure_times n)
+;;   (run_measurement [:thickness mm] [:sample_name s] [:file_path s] :do_measure t :insert_until_contact t :measure_times n
+;;                    :measure_40g t :measure_28g t :measure_10g t)   picks the film, measures the chosen frequencies
 ;; Reply: {"ok": true, "result": ...} | {"ok": false, "error": "..."}
 ;; Topic /embrio/auto_dem/abort (std_msgs/Empty): cancels the running motion and unwinds the running handler.
 ;; Pose convention: R = Rz(yaw) Ry(pitch) Rx(roll), degrees, as the embrio arm drivers expect.
@@ -171,12 +173,21 @@
 (defun embrio-move-joints (args)
   (let* ((joints (embrio-float-list (embrio-arg args :joints) *embrio-arm-joint-count* "joints"))
          (speed (embrio-positive (embrio-arg args :speed) "speed"))
+         (linear-speed (when (member :linear_speed args)
+                         (embrio-positive (embrio-arg args :linear_speed) "linear_speed")))
          (av (embrio-sync-model))
          (target (copy-seq av))
          (dmax 0.0))
     (embrio-check-joint-limits joints)
+    (dotimes (i *embrio-arm-joint-count*) (setf (elt target i) (elt joints i)))
+    ;; A joint-space path tilts the hand on the way, which slides a film off a held tray.
+    (when linear-speed
+      (send *robot* :angle-vector target)
+      (let ((goal (send *embrio-tcp* :copy-worldcoords)))
+        (send *robot* :angle-vector av)
+        (embrio-move-line goal linear-speed 5.0))
+      (setq av (embrio-sync-model)))
     (dotimes (i *embrio-arm-joint-count*)
-      (setf (elt target i) (elt joints i))
       (setq dmax (max dmax (abs (- (elt joints i) (elt av i))))))
     (let ((tm (max 500 (round (* 1000.0 (/ dmax speed))))))
       (send *robot* :angle-vector target)
@@ -188,13 +199,9 @@
           (error "joint~a stopped at ~a deg, target ~a" (1+ i) (elt reached i) (elt joints i))))
       (list (cons "joints" reached)))))
 
-(defun embrio-move-position (args)
-  (let* ((pose (embrio-float-list (embrio-arg args :position) 6 "position"))
-         (speed (embrio-positive (embrio-arg args :speed) "speed"))
-         (step (embrio-positive (embrio-arg args :step_mm 5.0) "step_mm"))
-         (av (embrio-sync-model))
+(defun embrio-move-line (goal speed step)
+  (let* ((av (embrio-sync-model))
          (start (send *embrio-tcp* :copy-worldcoords))
-         (goal (embrio-coords-from-pose pose))
          (dist (norm (v- (send goal :worldpos) (send start :worldpos))))
          (n (max 1 (ceiling (/ dist step))))
          (segment-ms (max 100 (round (* 1000.0 (/ (/ dist n) speed)))))
@@ -213,8 +220,14 @@
     (let ((dp (norm (send goal :difference-position *embrio-tcp*)))
           (dr (rad2deg (norm (send goal :difference-rotation *embrio-tcp*)))))
       (when (or (> dp *embrio-position-tolerance-mm*) (> dr *embrio-rotation-tolerance-deg*))
-        (error "arm stopped ~a mm / ~a deg short of the target" dp dr))
-      (list (cons "position" (embrio-pose-of *embrio-tcp*))))))
+        (error "arm stopped ~a mm / ~a deg short of the target" dp dr)))))
+
+(defun embrio-move-position (args)
+  (let ((pose (embrio-float-list (embrio-arg args :position) 6 "position"))
+        (speed (embrio-positive (embrio-arg args :speed) "speed"))
+        (step (embrio-positive (embrio-arg args :step_mm 5.0) "step_mm")))
+    (embrio-move-line (embrio-coords-from-pose pose) speed step)
+    (list (cons "position" (embrio-pose-of *embrio-tcp*)))))
 
 (defun embrio-gripper-width-m (v what)
   (let ((m (/ (embrio-number v what) 1000.0)))
@@ -263,12 +276,17 @@
   (embrio-sync-model)
   (list (cons "position" (embrio-gripper-mm))))
 
+;; In the fixed order 40 -> 28 -> 10: (request key, upstream function, always ends at the reset pose).
+;; 40G resets because the move from it to 28G is large; 28G hands straight over to 10G.
+(defvar *embrio-frequencies*
+  (list (list :measure_40g 'measure-40G t)
+        (list :measure_28g 'measure-28G nil)
+        (list :measure_10g 'measure-10G nil)))
+
 ;; Keys left out of the request are left out of the call, so the upstream keyword defaults apply.
-(defun embrio-run-measurement (args)
-  (let ((measure-times (embrio-arg args :measure_times))
-        (keys (list :do-measure (embrio-arg args :do_measure)
+(defun embrio-measure-keys (args)
+  (let ((keys (list :do-measure (embrio-arg args :do_measure)
                     :insert-until-contact (embrio-arg args :insert_until_contact))))
-    (unless (and (integerp measure-times) (>= measure-times 1)) (error "measure_times must be an integer >= 1"))
     (when (member :thickness args)
       (setq keys (append keys (list :thickness (embrio-positive (embrio-arg args :thickness) "thickness")))))
     (dolist (k (list (cons :sample_name :sample-name) (cons :file_path :file-path)))
@@ -277,9 +295,24 @@
           (unless (and (stringp v) (> (length v) 0))
             (error "~a must be a non-empty string" (string-downcase (symbol-name (car k)))))
           (setq keys (append keys (list (cdr k) v))))))
-    (if (= measure-times 1)
-        (apply #'pick-polymer-and-measure-40-28-10 keys)
-      (apply #'pick-polymer-and-measure-40-28-10-ntimes-each :measure-times measure-times keys))
+    keys))
+
+;; Built from the per-frequency functions the upstream batch is made of, so any subset moves the
+;; way the batch does: the batch goes straight from the pick to 40G and from 28G to 10G, and every
+;; other hop passes the reset pose, as the standalone functions do by default.
+(defun embrio-run-measurement (args)
+  (let ((measure-times (embrio-arg args :measure_times))
+        (selected (remove-if-not #'(lambda (f) (embrio-arg args (car f))) *embrio-frequencies*))
+        (keys (embrio-measure-keys args)))
+    (unless (and (integerp measure-times) (>= measure-times 1)) (error "measure_times must be an integer >= 1"))
+    (unless selected (error "select at least one of measure_40g, measure_28g, measure_10g"))
+    (pick-polymer-from-slider :start-reset-pose t :start-reset-pose-time 7000
+                              :end-reset-pose (not (eq (car (car selected)) :measure_40g)))
+    (dolist (f selected)
+      (dotimes (n measure-times)
+        (apply (cadr f) :start-reset-pose nil
+               :end-reset-pose (and (= n (1- measure-times)) (or (caddr f) (eq f (car (last selected)))))
+               keys)))
     (list (cons "measure_times" measure-times))))
 
 (defvar *embrio-handlers*

@@ -29,16 +29,19 @@ API (JSON over HTTP):
                              "params": {...}|null, "log": [str], "last_error": str|null,
                              "started_at": float|null, "finished_at": float|null}
     POST /start             body: {"thickness": float, "sample_name": str, "file_path": str,
-                             "do_measure": bool, "insert_until_contact": bool, "measure_times": 1..10}
+                             "do_measure": bool, "insert_until_contact": bool, "measure_times": 1..10,
+                             "measure_40g": bool, "measure_28g": bool, "measure_10g": bool}
                             (all optional; thickness, sample_name and file_path are left
-                             to the euslisp function's defaults when omitted)
+                             to the euslisp function's defaults when omitted. The chosen
+                             frequencies run in the fixed order 40, 28, 10; at least one)
                             202 {"status": "accepted", "params": {...}}
                             400 on invalid parameters, 409 while the arm is busy.
     POST /abort             cancels the running motion and unwinds the running handler
                             200 {"aborted": true}
     GET  /fr3/status        {"connected", "enabled", "has_errors", "robot_mode", "busy", "last_error"}
     GET  /fr3/pose          {"joints": [7 deg], "position": [x y z roll pitch yaw], "gripper_mm"}
-    POST /fr3/move-joints   {"joints": [7], "speed": deg/s}
+    POST /fr3/move-joints   {"joints": [7], "speed": deg/s, "linear_speed": mm/s (optional: the TCP
+                             runs a straight line to those joints' pose first, then the joints settle)}
     POST /fr3/move-position {"position": [6], "speed": mm/s, "step_mm": mm}
     POST /fr3/gripper/move  {"position": mm, "speed": mm/s} -> {"achieved": mm}
     POST /fr3/gripper/grasp {"width": mm, "speed": mm/s, "force": N,
@@ -92,7 +95,11 @@ DEFAULT_PARAMS = {
     "do_measure": True,
     "insert_until_contact": True,
     "measure_times": 1,
+    "measure_40g": True,
+    "measure_28g": True,
+    "measure_10g": True,
 }
+FREQUENCY_PARAMS = ("measure_40g", "measure_28g", "measure_10g")
 # Left out unless given, so the euslisp function's own keyword default applies.
 OPTIONAL_PARAMS = ("thickness", "sample_name", "file_path")
 MEASURE_TIMES_MAX = 10
@@ -125,9 +132,11 @@ def validate_params(body):
     for key in ("sample_name", "file_path"):
         if key in params and (not isinstance(params[key], str) or not params[key]):
             raise ValueError("%s must be a non-empty string" % key)
-    for key in ("do_measure", "insert_until_contact"):
+    for key in ("do_measure", "insert_until_contact") + FREQUENCY_PARAMS:
         if not isinstance(params[key], bool):
             raise ValueError("%s must be a boolean" % key)
+    if not any(params[key] for key in FREQUENCY_PARAMS):
+        raise ValueError("select at least one of %s" % ", ".join(FREQUENCY_PARAMS))
     times = params["measure_times"]
     if not isinstance(times, int) or isinstance(times, bool):
         raise ValueError("measure_times must be an integer")
@@ -617,9 +626,12 @@ class Handler(BaseHTTPRequestHandler):
                 return
             try:
                 if self.path == "/fr3/move-joints":
+                    extra = {}
+                    if "linear_speed" in body:
+                        extra["linear_speed"] = validate_positive(body, "linear_speed")
                     self._arm_call("move_joints", MOVE_TIMEOUT_S,
                                    joints=validate_joints(body.get("joints")),
-                                   speed=validate_positive(body, "speed"))
+                                   speed=validate_positive(body, "speed"), **extra)
                 elif self.path == "/fr3/move-position":
                     self._arm_call("move_position", MOVE_TIMEOUT_S,
                                    position=validate_position(body.get("position")),

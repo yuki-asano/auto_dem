@@ -109,8 +109,13 @@ python3 3rd_party/embrio/scripts/auto_dem_http_server.py --devices camera
 | --- | --- | --- |
 | GET | `/health` | 扱っている装置の一覧 `{"devices": [...]}` |
 | GET | `/status` | `state`（`idle` / `running` / `finished` / `failed`）、`running`、`params`、`log`、`last_error`、`started_at` / `finished_at` を返す |
-| POST | `/start` | body は `pick-polymer-and-measure-40-28-10` の引数（`thickness`, `sample_name`, `file_path`, `do_measure`, `insert_until_contact`）と `measure_times`（1 なら同関数、2 以上なら `-ntimes-each`）。すべて省略可。`thickness` / `sample_name` / `file_path` は省略すると euslisp の関数にも渡さず、関数の既定値（保存先・試料名・厚み）がそのまま使われる。`do_measure` / `insert_until_contact` の既定は true、`measure_times` は 1。202 受理 / 400 引数不正 / 409 腕が使用中 |
+| POST | `/start` | 膜をスライダからピックし、選んだ周波数を 40 → 28 → 10 GHz の固定順で計測する。body は `measure_40g` / `measure_28g` / `measure_10g`（どれを計測するか、既定はすべて true、1 つ以上必須）、各周波数の関数 `measure-40G` / `-28G` / `-10G` の引数（`thickness`, `sample_name`, `file_path`, `do_measure`, `insert_until_contact`）、`measure_times`（各周波数で関数を呼ぶ回数）。すべて省略可。`thickness` / `sample_name` / `file_path` は省略すると euslisp の関数にも渡さず、関数の既定値（保存先・試料名・厚み）がそのまま使われる。`do_measure` / `insert_until_contact` の既定は true、`measure_times` は 1。202 受理 / 400 引数不正 / 409 腕が使用中 |
 | POST | `/abort` | 実行中の動作をキャンセルし、走っている処理を打ち切る。run は `failed`（`last_error: "aborted"`）になる |
+
+計測シーケンスは上流の `pick-polymer-from-slider` と `measure-40G` / `-28G` / `-10G` を並べたものです。
+上流の `pick-polymer-and-measure-40-28-10` と同じく、ピック → 40G と 28G → 10G は直接つなぎ、それ以外の移り
+（ピック → 28G、40G → 28G など）は reset pose を経由します。3 つとも選んで `measure_times` が 1 なら同関数と
+同じ動きです。2 以上では関数をその回数呼ぶので、`-ntimes-each` より各回の初期姿勢への移動が遅くなります。
 
 `log` には開始と終了しか入りません（euslisp の関数に途中経過を外へ出す口が無いため）。
 
@@ -124,7 +129,7 @@ end-coords とは独立です。
 | --- | --- | --- |
 | GET | `/fr3/status` | `connected` / `enabled`（roseus ノードへの ping 結果）、`robot_mode`（franka_control の `franka_states` から。`move` / `reflex` など）、`has_errors`（ノードが応答しない、`robot_mode` が `reflex` / `user_stopped` / `automatic_error_recovery`、`current_errors` が立っている、`franka_states` が 2 s 以上届いていない、のいずれか）、`busy`、`last_error` |
 | GET | `/fr3/pose` | `{"joints": [7], "position": [6], "gripper_mm"}` |
-| POST | `/fr3/move-joints` | `{"joints": [7], "speed": deg/s}`。所要時間は最大関節差 ÷ speed（最短 0.5 s）。到達後に読み戻し、2 deg を超えて外れていればエラー |
+| POST | `/fr3/move-joints` | `{"joints": [7], "speed": deg/s, "linear_speed": mm/s}`。所要時間は最大関節差 ÷ speed（最短 0.5 s）。到達後に読み戻し、2 deg を超えて外れていればエラー。`linear_speed`（省略可）を付けると、先にその関節角での TCP 姿勢まで直線で動き（`move-position` と同じ区分 IK・検証）、そのあと関節角を合わせる。関節補間では途中で手先が傾くので、トレイを持って運ぶときに使う |
 | POST | `/fr3/move-position` | `{"position": [6], "speed": mm/s, "step_mm": mm}`。直線を `step_mm` 刻みに分け、全点の IK が解けてから動く（解けなければ動かずエラー）。到達後に 5 mm / 2 deg で検証 |
 | POST | `/fr3/gripper/move` | `{"position": mm, "speed": mm/s}` → `{"achieved": mm}`。move アクションで指定幅へ動かす。アクションが失敗を返せばエラー |
 | POST | `/fr3/gripper/grasp` | `{"width": mm, "speed": mm/s, "force": N, "epsilon_inner": mm, "epsilon_outer": mm}` → `{"achieved": mm}`。grasp アクションで物に当たるまで閉じ、`force` で保持する。止まった幅が `width - epsilon_inner` 〜 `width + epsilon_outer`（既定は各 5 mm）に入らなければエラー（物が無く全閉した場合も含む） |
