@@ -11,7 +11,7 @@
 ;;   (gripper_move :position mm :speed mm/s)                       -> achieved mm, move action
 ;;   (gripper_grasp :width mm :speed mm/s :force N :epsilon_inner mm :epsilon_outer mm) -> achieved mm
 ;;   (gripper_position)
-;;   (run_measurement :thickness mm :sample_name s :file_path s :do_measure t :insert_until_contact t :measure_times n)
+;;   (run_measurement [:thickness mm] [:sample_name s] [:file_path s] :do_measure t :insert_until_contact t :measure_times n)
 ;; Reply: {"ok": true, "result": ...} | {"ok": false, "error": "..."}
 ;; Topic /embrio/auto_dem/abort (std_msgs/Empty): cancels the running motion and unwinds the running handler.
 ;; Pose convention: R = Rz(yaw) Ry(pitch) Rx(roll), degrees, as the embrio arm drivers expect.
@@ -263,24 +263,23 @@
   (embrio-sync-model)
   (list (cons "position" (embrio-gripper-mm))))
 
+;; Keys left out of the request are left out of the call, so the upstream keyword defaults apply.
 (defun embrio-run-measurement (args)
-  (let ((thickness (embrio-positive (embrio-arg args :thickness) "thickness"))
-        (sample-name (embrio-arg args :sample_name))
-        (file-path (embrio-arg args :file_path))
-        (do-measure (embrio-arg args :do_measure))
-        (insert-until-contact (embrio-arg args :insert_until_contact))
-        (measure-times (embrio-arg args :measure_times)))
-    (unless (and (stringp sample-name) (> (length sample-name) 0)) (error "sample_name must be a non-empty string"))
-    (unless (and (stringp file-path) (> (length file-path) 0)) (error "file_path must be a non-empty string"))
+  (let ((measure-times (embrio-arg args :measure_times))
+        (keys (list :do-measure (embrio-arg args :do_measure)
+                    :insert-until-contact (embrio-arg args :insert_until_contact))))
     (unless (and (integerp measure-times) (>= measure-times 1)) (error "measure_times must be an integer >= 1"))
+    (when (member :thickness args)
+      (setq keys (append keys (list :thickness (embrio-positive (embrio-arg args :thickness) "thickness")))))
+    (dolist (k (list (cons :sample_name :sample-name) (cons :file_path :file-path)))
+      (when (member (car k) args)
+        (let ((v (embrio-arg args (car k))))
+          (unless (and (stringp v) (> (length v) 0))
+            (error "~a must be a non-empty string" (string-downcase (symbol-name (car k)))))
+          (setq keys (append keys (list (cdr k) v))))))
     (if (= measure-times 1)
-        (pick-polymer-and-measure-40-28-10
-         :thickness thickness :sample-name sample-name :file-path file-path
-         :do-measure do-measure :insert-until-contact insert-until-contact)
-      (pick-polymer-and-measure-40-28-10-ntimes-each
-       :measure-times measure-times
-       :thickness thickness :sample-name sample-name :file-path file-path
-       :do-measure do-measure :insert-until-contact insert-until-contact))
+        (apply #'pick-polymer-and-measure-40-28-10 keys)
+      (apply #'pick-polymer-and-measure-40-28-10-ntimes-each :measure-times measure-times keys))
     (list (cons "measure_times" measure-times))))
 
 (defvar *embrio-handlers*

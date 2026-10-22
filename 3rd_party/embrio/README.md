@@ -109,7 +109,7 @@ python3 3rd_party/embrio/scripts/auto_dem_http_server.py --devices camera
 | --- | --- | --- |
 | GET | `/health` | 扱っている装置の一覧 `{"devices": [...]}` |
 | GET | `/status` | `state`（`idle` / `running` / `finished` / `failed`）、`running`、`params`、`log`、`last_error`、`started_at` / `finished_at` を返す |
-| POST | `/start` | body は `pick-polymer-and-measure-40-28-10` の引数（`thickness`, `sample_name`, `file_path`, `do_measure`, `insert_until_contact`）と `measure_times`（1 なら同関数、2 以上なら `-ntimes-each`）。すべて省略可で、既定値は euslisp 側と同一。202 受理 / 400 引数不正 / 409 腕が使用中 |
+| POST | `/start` | body は `pick-polymer-and-measure-40-28-10` の引数（`thickness`, `sample_name`, `file_path`, `do_measure`, `insert_until_contact`）と `measure_times`（1 なら同関数、2 以上なら `-ntimes-each`）。すべて省略可。`thickness` / `sample_name` / `file_path` は省略すると euslisp の関数にも渡さず、関数の既定値（保存先・試料名・厚み）がそのまま使われる。`do_measure` / `insert_until_contact` の既定は true、`measure_times` は 1。202 受理 / 400 引数不正 / 409 腕が使用中 |
 | POST | `/abort` | 実行中の動作をキャンセルし、走っている処理を打ち切る。run は `failed`（`last_error: "aborted"`）になる |
 
 `log` には開始と終了しか入りません（euslisp の関数に途中経過を外へ出す口が無いため）。

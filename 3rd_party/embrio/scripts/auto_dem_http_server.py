@@ -30,7 +30,8 @@ API (JSON over HTTP):
                              "started_at": float|null, "finished_at": float|null}
     POST /start             body: {"thickness": float, "sample_name": str, "file_path": str,
                              "do_measure": bool, "insert_until_contact": bool, "measure_times": 1..10}
-                            (all optional; defaults match the euslisp functions)
+                            (all optional; thickness, sample_name and file_path are left
+                             to the euslisp function's defaults when omitted)
                             202 {"status": "accepted", "params": {...}}
                             400 on invalid parameters, 409 while the arm is busy.
     POST /abort             cancels the running motion and unwinds the running handler
@@ -78,13 +79,12 @@ MOVE_TIMEOUT_S = 600.0
 RUN_TIMEOUT_S = None
 
 DEFAULT_PARAMS = {
-    "thickness": 0.3,
-    "sample_name": "sample",
-    "file_path": "C:/Users/test/Desktop/asano/test_file.csv",
     "do_measure": True,
     "insert_until_contact": True,
     "measure_times": 1,
 }
+# Left out unless given, so the euslisp function's own keyword default applies.
+OPTIONAL_PARAMS = ("thickness", "sample_name", "file_path")
 MEASURE_TIMES_MAX = 10
 # libfranka's own default for both sides of the grasp window.
 GRASP_EPSILON_MM = 5.0
@@ -103,15 +103,17 @@ def validate_params(body):
     """Return validated run params merged over defaults; raise ValueError."""
     if not isinstance(body, dict):
         raise ValueError("request body must be a JSON object")
-    unknown = set(body) - set(DEFAULT_PARAMS)
+    unknown = set(body) - set(DEFAULT_PARAMS) - set(OPTIONAL_PARAMS)
     if unknown:
         raise ValueError("unknown parameter(s): %s" % ", ".join(sorted(unknown)))
     params = dict(DEFAULT_PARAMS)
     params.update(body)
-    if not _is_number(params["thickness"]) or params["thickness"] <= 0:
-        raise ValueError("thickness must be a number > 0")
+    if "thickness" in params:
+        if not _is_number(params["thickness"]) or params["thickness"] <= 0:
+            raise ValueError("thickness must be a number > 0")
+        params["thickness"] = float(params["thickness"])
     for key in ("sample_name", "file_path"):
-        if not isinstance(params[key], str) or not params[key]:
+        if key in params and (not isinstance(params[key], str) or not params[key]):
             raise ValueError("%s must be a non-empty string" % key)
     for key in ("do_measure", "insert_until_contact"):
         if not isinstance(params[key], bool):
@@ -121,7 +123,6 @@ def validate_params(body):
         raise ValueError("measure_times must be an integer")
     if not 1 <= times <= MEASURE_TIMES_MAX:
         raise ValueError("measure_times must be between 1 and %d" % MEASURE_TIMES_MAX)
-    params["thickness"] = float(params["thickness"])
     return params
 
 
