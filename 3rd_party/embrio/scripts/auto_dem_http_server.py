@@ -36,7 +36,7 @@ API (JSON over HTTP):
                             400 on invalid parameters, 409 while the arm is busy.
     POST /abort             cancels the running motion and unwinds the running handler
                             200 {"aborted": true}
-    GET  /fr3/status        {"connected", "enabled", "has_errors", "busy", "last_error"}
+    GET  /fr3/status        {"connected", "enabled", "has_errors", "robot_mode", "busy", "last_error"}
     GET  /fr3/pose          {"joints": [7 deg], "position": [x y z roll pitch yaw], "gripper_mm"}
     POST /fr3/move-joints   {"joints": [7], "speed": deg/s}
     POST /fr3/move-position {"position": [6], "speed": mm/s, "step_mm": mm}
@@ -45,6 +45,8 @@ API (JSON over HTTP):
                              "epsilon_inner": mm, "epsilon_outer": mm} -> {"achieved": mm}
     GET  /fr3/gripper/position
     POST /fr3/abort         same as /abort
+    POST /fr3/errors/clear  franka_control's error recovery (a reflex after a collision)
+                            -> {"robot_mode", "errors"}; 409 while the arm is busy
     POST /camera/*          see embrio_camera.py
 
 One arm slot: a run and the fr3 calls share it, so a call that arrives while the
@@ -53,7 +55,7 @@ The euslisp node answering {"ok": false} is a 500 with its message; the node not
 answering at all is a 503.
 
 Python 3.8 standard library, plus rospy and the roseus srv package for dem/fr3,
-python3-opencv for camera.
+actionlib and franka_msgs for fr3, python3-opencv for camera.
 """
 
 import argparse
@@ -71,6 +73,14 @@ DEFAULT_PORT = 8302
 DEVICES = ("dem", "fr3", "camera")
 SERVICE = "/embrio/auto_dem/call"
 ABORT_TOPIC = "/embrio/auto_dem/abort"
+STATE_TOPIC = "/franka_state_controller/franka_states"
+RECOVERY_ACTION = "/franka_control/error_recovery"
+# franka_msgs/FrankaState.robot_mode; the arm takes no motion in the last three until recovered.
+ROBOT_MODES = ("other", "idle", "move", "guiding", "reflex", "user_stopped", "automatic_error_recovery")
+FAULT_MODES = ("reflex", "user_stopped", "automatic_error_recovery")
+# franka_state_controller publishes at 30 Hz; older than this means franka_control is gone.
+STATE_MAX_AGE_S = 2.0
+RECOVERY_TIMEOUT_S = 15.0
 LOG_MAX = 200
 JOINT_COUNT = 7
 POSITION_LENGTH = 6
@@ -226,6 +236,73 @@ class EusClient:
         self._abort.publish(self._empty())
 
 
+class FrankaUnavailable(Exception):
+    """No fresh robot state, or franka_control's recovery action is not served."""
+
+
+class FrankaError(Exception):
+    """franka_control's error recovery did not succeed."""
+
+
+class FrankaMonitor:
+    """The robot's own mode and errors from franka_control, which the roseus node does not see."""
+
+    def __init__(self):
+        import actionlib
+        from franka_msgs.msg import ErrorRecoveryAction, ErrorRecoveryGoal, FrankaState
+
+        self._lock = threading.Lock()
+        self._latest = None
+        self._goal = ErrorRecoveryGoal
+        self._recovery = actionlib.SimpleActionClient(RECOVERY_ACTION, ErrorRecoveryAction)
+        self._succeeded = actionlib.GoalStatus.SUCCEEDED
+        rospy.Subscriber(STATE_TOPIC, FrankaState, self._on_state, queue_size=1)
+
+    def _on_state(self, msg):
+        errors = [name for name in msg.current_errors.__slots__ if getattr(msg.current_errors, name)]
+        mode = ROBOT_MODES[msg.robot_mode] if 0 <= msg.robot_mode < len(ROBOT_MODES) else str(msg.robot_mode)
+        with self._lock:
+            self._latest = (time.monotonic(), mode, errors)
+
+    def state(self, newer_than=None):
+        with self._lock:
+            latest = self._latest
+        if latest is None or time.monotonic() - latest[0] > STATE_MAX_AGE_S:
+            raise FrankaUnavailable("no %s within %.0f s: is franka_control up?" % (STATE_TOPIC, STATE_MAX_AGE_S))
+        if newer_than is not None and latest[0] <= newer_than:
+            return None
+        return {"robot_mode": latest[1], "errors": latest[2]}
+
+    @staticmethod
+    def fault(state):
+        if state["robot_mode"] in FAULT_MODES or state["errors"]:
+            return "robot_mode %s, errors %s" % (state["robot_mode"], state["errors"])
+        return None
+
+    def recover(self):
+        """Send the recovery goal, then wait for a robot state taken after it; raise unless that state is clear."""
+        if not self._recovery.wait_for_server(rospy.Duration(5.0)):
+            raise FrankaUnavailable("%s is not served: is franka_control up?" % RECOVERY_ACTION)
+        self._recovery.send_goal(self._goal())
+        if not self._recovery.wait_for_result(rospy.Duration(RECOVERY_TIMEOUT_S)):
+            self._recovery.cancel_goal()
+            raise FrankaError("%s did not finish within %.0f s" % (RECOVERY_ACTION, RECOVERY_TIMEOUT_S))
+        if self._recovery.get_state() != self._succeeded:
+            raise FrankaError("%s ended in state %d: %s" % (
+                RECOVERY_ACTION, self._recovery.get_state(), self._recovery.get_goal_status_text()))
+        done = time.monotonic()
+        state = None
+        while state is None:
+            if time.monotonic() - done > STATE_MAX_AGE_S:
+                raise FrankaUnavailable("no %s after the recovery" % STATE_TOPIC)
+            time.sleep(0.05)
+            state = self.state(newer_than=done)
+        fault = self.fault(state)
+        if fault:
+            raise FrankaError("the recovery succeeded but the robot still reports %s" % fault)
+        return state
+
+
 class ArmSlot:
     """The one caller allowed to move the arm at a time; a busy arm refuses, never queues."""
 
@@ -328,6 +405,7 @@ class RunState:
 RUN_STATE = RunState()
 ARM_SLOT = ArmSlot()
 CLIENT = None
+FRANKA = None
 
 
 def log_info(message):
@@ -447,18 +525,46 @@ class Handler(BaseHTTPRequestHandler):
         self._reply(200, {"aborted": True})
 
     def _fr3_status(self):
-        connected, error = True, None
+        connected, error, robot_mode = True, None, None
         try:
             CLIENT.call("ping", 5.0)
         except (EusUnavailable, EusError) as e:
             connected, error = False, str(e)
+        try:
+            state = FRANKA.state()
+            robot_mode = state["robot_mode"]
+            fault = FRANKA.fault(state)
+        except FrankaUnavailable as e:
+            fault = str(e)
+        if fault:
+            error = fault if error is None else "%s; %s" % (error, fault)
         self._reply(200, {
             "connected": connected,
             "enabled": connected,
             "has_errors": error is not None,
+            "robot_mode": robot_mode,
             "busy": ARM_SLOT.busy,
             "last_error": error,
         })
+
+    def _fr3_clear_errors(self):
+        if not ARM_SLOT.acquire("errors_clear"):
+            self._reply(409, {"error": "the arm is busy (%s)" % ARM_SLOT.holder})
+            return
+        try:
+            state = FRANKA.recover()
+        except FrankaUnavailable as e:
+            log_error("error recovery: %s" % e)
+            self._reply(503, {"error": str(e)})
+            return
+        except FrankaError as e:
+            log_error("error recovery failed: %s" % e)
+            self._reply(500, {"error": str(e)})
+            return
+        finally:
+            ARM_SLOT.release()
+        log_info("FR3 errors cleared (robot_mode %s)" % state["robot_mode"])
+        self._reply(200, state)
 
     def do_GET(self):
         if self.path == "/health":
@@ -505,6 +611,9 @@ class Handler(BaseHTTPRequestHandler):
         if self._prefix() == "fr3":
             if "fr3" not in self.devices:
                 self._disabled("fr3")
+                return
+            if self.path == "/fr3/errors/clear":
+                self._fr3_clear_errors()
                 return
             try:
                 if self.path == "/fr3/move-joints":
@@ -555,7 +664,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    global rospy, CLIENT
+    global rospy, CLIENT, FRANKA
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--devices", type=parse_devices, default=list(DEVICES))
@@ -570,6 +679,8 @@ def main():
         rospy = _rospy
         rospy.init_node("auto_dem_http", disable_signals=True)
         CLIENT = EusClient()
+        if "fr3" in args.devices:
+            FRANKA = FrankaMonitor()
     else:
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if "camera" in args.devices:

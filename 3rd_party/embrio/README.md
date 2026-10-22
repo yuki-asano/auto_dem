@@ -22,7 +22,7 @@ auto_dem の計測シーケンス（ポリマー膜のピックアップ → 10 
 
 **この PC への追加インストールはありません。** 依存は次のとおりで、いずれも既にあるものです。
 
-- 計測・FR3（`dem` / `fr3`）: Python 3.8 の標準ライブラリ、rospy、`roseus`（StringString サービス型）、auto_dem とその依存（panda_eus など）
+- 計測・FR3（`dem` / `fr3`）: Python 3.8 の標準ライブラリ、rospy、`roseus`（StringString サービス型）、auto_dem とその依存（panda_eus など）。`fr3` はさらに actionlib と franka_msgs（franka_ros の一部）
 - カメラ（`camera`）: ROS Noetic に含まれる `python3-opencv`（cv2 / numpy）
 
 カメラを使う場合、起動ユーザが `video` グループに入っている必要があります（`/dev/video*` を開くため）。
@@ -122,7 +122,7 @@ end-coords とは独立です。
 
 | Method | Path | 説明 |
 | --- | --- | --- |
-| GET | `/fr3/status` | `connected` / `enabled` / `has_errors` / `busy` / `last_error`（roseus ノードへの ping 結果） |
+| GET | `/fr3/status` | `connected` / `enabled`（roseus ノードへの ping 結果）、`robot_mode`（franka_control の `franka_states` から。`move` / `reflex` など）、`has_errors`（ノードが応答しない、`robot_mode` が `reflex` / `user_stopped` / `automatic_error_recovery`、`current_errors` が立っている、`franka_states` が 2 s 以上届いていない、のいずれか）、`busy`、`last_error` |
 | GET | `/fr3/pose` | `{"joints": [7], "position": [6], "gripper_mm"}` |
 | POST | `/fr3/move-joints` | `{"joints": [7], "speed": deg/s}`。所要時間は最大関節差 ÷ speed（最短 0.5 s）。到達後に読み戻し、1 deg を超えて外れていればエラー |
 | POST | `/fr3/move-position` | `{"position": [6], "speed": mm/s, "step_mm": mm}`。直線を `step_mm` 刻みに分け、全点の IK が解けてから動く（解けなければ動かずエラー）。到達後に 2 mm / 2 deg で検証 |
@@ -130,6 +130,7 @@ end-coords とは独立です。
 | POST | `/fr3/gripper/grasp` | `{"width": mm, "speed": mm/s, "force": N, "epsilon_inner": mm, "epsilon_outer": mm}` → `{"achieved": mm}`。grasp アクションで物に当たるまで閉じ、`force` で保持する。止まった幅が `width - epsilon_inner` 〜 `width + epsilon_outer`（既定は各 5 mm）に入らなければエラー（物が無く全閉した場合も含む） |
 | GET | `/fr3/gripper/position` | `{"position": mm}` |
 | POST | `/fr3/abort` | `/abort` と同じ |
+| POST | `/fr3/errors/clear` | 衝突などで止まった（ランプが赤の）ロボットを、franka_control の error recovery アクションで復帰させる → `{"robot_mode", "errors"}`。復帰後の状態にまだ異常があれば 500、アクションサーバが無ければ 503、腕が使用中なら 409。腕は動かない |
 
 `achieved` はアクションの完了直後ではなく、幅が 0.3 s 動かなくなってから読みます（完了直後の値は指の動きに
 遅れるため）。3 s 待っても落ち着かなければエラーです。
