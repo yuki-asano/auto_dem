@@ -134,7 +134,7 @@
 
 (defun embrio-pose-of (coords)
   (let ((pos (send coords :worldpos))
-        (ypr (car (send coords :rpy-angle))))
+        (ypr (car (rpy-angle (send coords :worldrot)))))
     (list (elt pos 0) (elt pos 1) (elt pos 2)
           (rad2deg (elt ypr 2)) (rad2deg (elt ypr 1)) (rad2deg (elt ypr 0)))))
 
