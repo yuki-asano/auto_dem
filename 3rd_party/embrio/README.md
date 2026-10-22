@@ -18,7 +18,7 @@ auto_dem の計測シーケンス（ポリマー膜のピックアップ → 10 
 | `euslisp/auto_dem_embrio_node.l` | `dielectrometer-manip.l` を読み込み、計測一括関数と FR3 の基本動作を 1 本の ROS サービス（`roseus/StringString`）で公開する roseus ノード |
 | `scripts/auto_dem_http_server.py` | 上記サービスを JSON/HTTP で包む rospy ノード。カメラの中継も同じポートで提供する |
 | `scripts/embrio_camera.py` | USB カメラの中継処理（上記サーバから import される） |
-| `launch/auto_dem_http_server.launch` | 上記 2 ノードだけを起動する launch ファイル |
+| `launch/auto_dem_http_server.launch` | 上記 2 ノードと rosbridge を起動する launch ファイル（`auto_dem.launch` の代わりに使う） |
 
 **この PC への追加インストールはありません。** 依存は次のとおりで、いずれも既にあるものです。
 
@@ -38,21 +38,26 @@ FR3 を動かす口もありませんでした。このサーバはその入口�
 ## 起動方法
 
 ロボット側（tiger: `roscore` と `roslaunch auto_dem fr3_dielec.launch`）と誘電率計側（WSL の
-`aet_instrument`）は**従来どおり**起動してください。その上で、操作 PC（lion）の catkin workspace を
-source した端末から:
+`wsl2_ros_bridge` と `aet_instrument`）は**従来どおり**起動してください。操作 PC（lion）では
+`roslaunch auto_dem auto_dem.launch` の**代わりに**、catkin workspace を source した端末から:
 
 ```bash
-# launch ファイルから（roseus ノード + HTTP サーバ）
+# launch ファイルから（rosbridge + roseus ノード + HTTP サーバ）
 roslaunch auto_dem auto_dem_http_server.launch
 roslaunch auto_dem auto_dem_http_server.launch port:=8302
 
-# 個別に起動する場合
+# 個別に起動する場合（rosbridge は auto_dem.launch と同じく別途必要）
+roslaunch rosbridge_server rosbridge_websocket.launch
 rosrun auto_dem auto_dem_embrio_node.l
 rosrun auto_dem auto_dem_http_server.py --port 8302
 ```
 
-既存の `roslaunch auto_dem auto_dem.launch`（`dielectrometer_manip` ノード）は**同時に起動しない**
-でください。同時に起動すると、プレス PC からのトピックでも腕が動きます。
+この launch は `auto_dem.launch` の rosbridge をそのまま含み、`dielectrometer_manip` ノードだけを
+embrio 用のノードに置き換えたものです。誘電率計 PC は lion の rosbridge 経由で `/dielectrometer_cmd`
+を受け取るので、rosbridge が無いと腕は動いても計測器が動きません（エラーにもなりません）。
+
+既存の `roslaunch auto_dem auto_dem.launch` は**同時に起動しない**でください。rosbridge のポートが
+衝突するうえ、プレス PC からのトピックでも腕が動きます。
 
 ### 扱う装置を絞る（`--devices`）
 
