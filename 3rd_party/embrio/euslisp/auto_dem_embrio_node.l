@@ -7,7 +7,7 @@
 ;;   (ping)
 ;;   (pose)                                   -> joints [deg] x7, position [x y z roll pitch yaw] (mm/deg), gripper_mm
 ;;   (move_joints :joints (7 values) :speed deg/s [:linear_speed mm/s])   with linear_speed the TCP runs a
-;;                                            straight line to where those joints put it, then the joints settle
+;;                                            straight line to where those joints put it, ending on them
 ;;   (move_position :position (6 values) :speed mm/s :step_mm mm)   straight line, piecewise IK
 ;;   (gripper_move :position mm :speed mm/s)                       -> achieved mm, move action
 ;;   (gripper_grasp :width mm :speed mm/s :force N :epsilon_inner mm :epsilon_outer mm) -> achieved mm
@@ -180,18 +180,24 @@
          (dmax 0.0))
     (embrio-check-joint-limits joints)
     (dotimes (i *embrio-arm-joint-count*) (setf (elt target i) (elt joints i)))
-    ;; A joint-space path tilts the hand on the way, which slides a film off a held tray.
-    (when linear-speed
-      (send *robot* :angle-vector target)
-      (let ((goal (send *embrio-tcp* :copy-worldcoords)))
-        (send *robot* :angle-vector av)
-        (embrio-move-line goal linear-speed 5.0))
-      (setq av (embrio-sync-model)))
     (dotimes (i *embrio-arm-joint-count*)
       (setq dmax (max dmax (abs (- (elt joints i) (elt av i))))))
     (let ((tm (max 500 (round (* 1000.0 (/ dmax speed))))))
-      (send *robot* :angle-vector target)
-      (send *ri* :angle-vector target tm)
+      (if linear-speed
+          ;; A joint-space path tilts the hand on the way, which slides a film off a held tray. The interpolation
+          ;; seeds each IK from the blended joints, so the 7-axis arm ends on the taught posture, not just its pose.
+          (let* ((start (send *embrio-tcp* :copy-worldcoords))
+                 (dist (progn (send *robot* :angle-vector target)
+                              (norm (v- (send *embrio-tcp* :worldpos) (send start :worldpos))))))
+            ;; 1.875 is the min-jerk profile's peak-to-mean speed ratio, so linear_speed bounds the peak.
+            (setq tm (max tm (round (* 1875.0 (/ dist linear-speed)))))
+            (unless (send *ri* :angle-vector target tm nil 0 :min-time 0.0 :end-coords-interpolation t
+                          :end-coords-interpolation-steps (max 10 (ceiling (/ dist 5.0))))
+              (embrio-sync-model)
+              (error "ik failed on the straight line to the target joints")))
+        (progn
+          (send *robot* :angle-vector target)
+          (send *ri* :angle-vector target tm)))
       (send *ri* :wait-interpolation))
     (let ((reached (embrio-arm-joints (embrio-sync-model))))
       (dotimes (i *embrio-arm-joint-count*)
