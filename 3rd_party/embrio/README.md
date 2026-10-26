@@ -40,6 +40,9 @@ FR3 を動かす口もありませんでした。このサーバはその入口�
 操作 PC（lion）では `roslaunch auto_dem auto_dem.launch` の**代わりに**
 `roslaunch auto_dem auto_dem_http_server.launch` を起動します。この launch は `auto_dem.launch` と同じ
 rosbridge（9090 番）を含み、`dielectrometer_manip` ノードだけを embrio 用のノードに置き換えたものです。
+embrio 用のノードも `/start_dielectrometer_manip` を受け取り、`dielectrometer-manip-node.l` の `cb` と
+同じ処理（`measure-40G :do-measure t :insert-until-contact nil`）を実行するので、上流 README の
+`rostopic pub -1 /start_dielectrometer_manip std_msgs/Bool "data: true"` はそのまま使えます。
 それ以外の PC の手順は上流の README のとおりで、**起動する順番だけ守ってください。**
 
 1. ロボット PC（tiger）: `roscore`、`roslaunch auto_dem fr3_dielec.launch`
@@ -79,7 +82,7 @@ rostopic info /dielectrometer_cmd
 ```
 
 既存の `roslaunch auto_dem auto_dem.launch` は**同時に起動しない**でください。rosbridge のポートが
-衝突するうえ、プレス PC からのトピックでも腕が動きます。
+衝突するうえ、`/start_dielectrometer_manip` を受けた 2 つのノードが互いを知らずに同じ腕を動かします。
 
 ### 扱う装置を絞る（`--devices`）
 
@@ -167,6 +170,11 @@ curl http://<lion>:8302/status
 - **腕を動かせるのは一度に 1 つ。** 計測 run と `/fr3/*` の動作は同じスロットを共有し、使用中なら
   待たせずに 409 を返します。`/abort` だけはスロットを取らずに通ります。
 - **run スロットは 1 つ。** 実行中の `/start` は 409 を返します。
+- **`/start_dielectrometer_manip` で起動した処理も同じ腕を使います。** roseus ノードは腕を使っている間、
+  `ping` 以外の呼び出しを「the arm is busy」で拒否します（HTTP 側のスロットは空いて見えるため、
+  HTTP では 409 ではなく 500 になります）。腕が使用中のときに届いたトピックは、エラーをログに出して捨てます。
+  トピックで起動した処理は `/status` に現れませんが、`/abort` では止められます。
+  `cb` の中身を上流で変えたときは、`auto_dem_embrio_node.l` の `embrio-start-dielectrometer-manip` も合わせて直してください。
 - **`/abort` は動作中の `:angle-vector` をキャンセルし、走っている euslisp の処理を打ち切ります。**
   計測器への指令（`dielectrometer_cmd`）は取り消せないので、計測中の誘電率計はそのまま動き続けます。
 - **roseus ノードは単一スレッドです。** 処理中は `:wait-interpolation` の中でしか ROS のメッセージを

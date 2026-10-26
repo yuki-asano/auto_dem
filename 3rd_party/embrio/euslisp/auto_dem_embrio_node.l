@@ -16,6 +16,8 @@
 ;;                    :measure_40g t :measure_28g t :measure_10g t)   picks the film, measures the chosen frequencies
 ;; Reply: {"ok": true, "result": ...} | {"ok": false, "error": "..."}
 ;; Topic /embrio/auto_dem/abort (std_msgs/Empty): cancels the running motion and unwinds the running handler.
+;; Topic /start_dielectrometer_manip (std_msgs/Bool): true runs what dielectrometer-manip-node.l's cb runs;
+;;   refused (logged) while the arm is busy, and it makes HTTP calls other than ping fail as busy.
 ;; Pose convention: R = Rz(yaw) Ry(pitch) Rx(roll), degrees, as the embrio arm drivers expect.
 
 (load "package://auto_dem/euslisp/dielectrometer-manip.l")
@@ -325,24 +327,39 @@
         (cons "gripper_position" 'embrio-gripper-position)
         (cons "run_measurement" 'embrio-run-measurement)))
 
+(defun embrio-start-dielectrometer-manip (args)
+  (measure-40G :do-measure t :insert-until-contact nil)
+  nil)
+
+;; Calls reach this node nested inside a running handler's ros::spin-once, so the one that
+;; holds the arm refuses the rest; only ping, which /fr3/status sends during a run, passes.
+(defvar *embrio-concurrent-handlers* (list "ping"))
+
+(defun embrio-execute (name handler args)
+  (cond ((member name *embrio-concurrent-handlers* :test #'string=)
+         (list :ok (funcall handler args)))
+        (*embrio-busy* (error "the arm is busy (~a)" *embrio-busy*))
+        (t (catch :embrio-abort
+             (setq *embrio-busy* name)
+             (unwind-protect
+                 (list :ok (funcall handler args))
+               (setq *embrio-busy* nil))))))
+
+(defun embrio-outcome-json (outcome)
+  (case (car outcome)
+    (:ok (embrio-json (list (cons "ok" t) (cons "result" (cadr outcome)))))
+    (:aborted (embrio-json (list (cons "ok" :false) (cons "error" "aborted"))))
+    (t (embrio-json (list (cons "ok" :false) (cons "error" (cadr outcome)))))))
+
 (defun embrio-dispatch (text)
-  (let ((outcome
-         (catch :embrio-abort
-           (catch :embrio-error
-             (let* ((*embrio-in-call* t)
-                    (form (embrio-parse text))
-                    (name (string-downcase (symbol-name (car form))))
-                    (handler (cdr (assoc name *embrio-handlers* :test #'string=))))
-               (unless handler (error "unknown method ~a" name))
-               (setq *embrio-busy* t)
-               (unwind-protect
-                   (list :ok (funcall handler (cdr form)))
-                 (setq *embrio-busy* nil)))))))
-    (setq *embrio-busy* nil)
-    (case (car outcome)
-      (:ok (embrio-json (list (cons "ok" t) (cons "result" (cadr outcome)))))
-      (:aborted (embrio-json (list (cons "ok" :false) (cons "error" "aborted"))))
-      (t (embrio-json (list (cons "ok" :false) (cons "error" (cadr outcome))))))))
+  (embrio-outcome-json
+   (catch :embrio-error
+     (let* ((*embrio-in-call* t)
+            (form (embrio-parse text))
+            (name (string-downcase (symbol-name (car form))))
+            (handler (cdr (assoc name *embrio-handlers* :test #'string=))))
+       (unless handler (error "unknown method ~a" name))
+       (embrio-execute name handler (cdr form))))))
 
 (defun embrio-call-cb (req)
   (let ((res (send req :response)))
@@ -356,11 +373,22 @@
   (when *embrio-busy*
     (throw :embrio-abort (list :aborted))))
 
+;; The stock trigger of dielectrometer-manip-node.l, kept so its rostopic pub still works next to HTTP.
+(defun embrio-start-cb (msg)
+  (when (send msg :data)
+    (let ((outcome (catch :embrio-error
+                     (let ((*embrio-in-call* t))
+                       (embrio-execute "start_dielectrometer_manip" 'embrio-start-dielectrometer-manip nil)))))
+      (if (eq (car outcome) :ok)
+          (ros::ros-info "/start_dielectrometer_manip finished")
+        (ros::ros-error "/start_dielectrometer_manip failed: ~a" (embrio-outcome-json outcome))))))
+
 (defun main ()
   (ros::roseus "auto_dem_embrio_manip")
   (ros::rate 10)
   (ros::advertise-service "/embrio/auto_dem/call" roseus::StringString #'embrio-call-cb)
   (ros::subscribe "/embrio/auto_dem/abort" std_msgs::Empty #'embrio-abort-cb)
+  (ros::subscribe "/start_dielectrometer_manip" std_msgs::Bool #'embrio-start-cb)
   (objects *display-objects*)
   (warn "auto_dem_embrio_manip: waiting for /embrio/auto_dem/call~%")
   (do-until-key
