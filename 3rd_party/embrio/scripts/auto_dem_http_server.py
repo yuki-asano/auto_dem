@@ -41,7 +41,7 @@ API (JSON over HTTP):
     GET  /fr3/status        {"connected", "enabled", "has_errors", "robot_mode", "busy", "last_error"}
     GET  /fr3/pose          {"joints": [7 deg], "position": [x y z roll pitch yaw], "gripper_mm"}
     POST /fr3/move-joints   {"joints": [7], "speed": deg/s, "linear_speed": mm/s (optional: the TCP
-                             runs a straight line to those joints' pose, ending on the joints themselves)}
+                             runs a straight line to those joints' pose first, then the joints settle)}
     POST /fr3/move-position {"position": [6], "speed": mm/s, "step_mm": mm}
     POST /fr3/gripper/move  {"position": mm, "speed": mm/s} -> {"achieved": mm}
     POST /fr3/gripper/grasp {"width": mm, "speed": mm/s, "force": N,

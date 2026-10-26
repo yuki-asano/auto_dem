@@ -129,7 +129,7 @@ end-coords とは独立です。
 | --- | --- | --- |
 | GET | `/fr3/status` | `connected` / `enabled`（roseus ノードへの ping 結果）、`robot_mode`（franka_control の `franka_states` から。`move` / `reflex` など）、`has_errors`（ノードが応答しない、`robot_mode` が `reflex` / `user_stopped` / `automatic_error_recovery`、`current_errors` が立っている、`franka_states` が 2 s 以上届いていない、のいずれか）、`busy`、`last_error` |
 | GET | `/fr3/pose` | `{"joints": [7], "position": [6], "gripper_mm"}` |
-| POST | `/fr3/move-joints` | `{"joints": [7], "speed": deg/s, "linear_speed": mm/s}`。所要時間は最大関節差 ÷ speed（最短 0.5 s）。到達後に読み戻し、2 deg を超えて外れていればエラー。`linear_speed`（省略可）を付けると、その関節角での TCP 姿勢まで TCP が直線で動く（robot-interface の `:end-coords-interpolation`。5 mm 刻みで最低 10 分割、各点の IK は始点と指定関節角の混合から解くので、終点は指定関節角そのもの）。速度は min-jerk の最大で `linear_speed` 以下。解けない点があれば動かずエラー。関節補間では途中で手先が傾くので、トレイを持って運ぶときに使う |
+| POST | `/fr3/move-joints` | `{"joints": [7], "speed": deg/s, "linear_speed": mm/s}`。所要時間は最大関節差 ÷ speed（最短 0.5 s）。到達後に読み戻し、2 deg を超えて外れていればエラー。`linear_speed`（省略可）を付けると、先にその関節角での TCP 姿勢まで直線で動き（`move-position` と同じ区分 IK・検証）、そのあと関節角を合わせる。関節補間では途中で手先が傾くので、トレイを持って運ぶときに使う |
 | POST | `/fr3/move-position` | `{"position": [6], "speed": mm/s, "step_mm": mm}`。直線を `step_mm` 刻みに分け、全点の IK が解けてから動く（解けなければ動かずエラー）。到達後に 5 mm / 2 deg で検証 |
 | POST | `/fr3/gripper/move` | `{"position": mm, "speed": mm/s}` → `{"achieved": mm}`。move アクションで指定幅へ動かす。アクションが失敗を返せばエラー |
 | POST | `/fr3/gripper/grasp` | `{"width": mm, "speed": mm/s, "force": N, "epsilon_inner": mm, "epsilon_outer": mm}` → `{"achieved": mm}`。grasp アクションで物に当たるまで閉じ、`force` で保持する。止まった幅が `width - epsilon_inner` 〜 `width + epsilon_outer`（既定は各 5 mm）に入らなければエラー（物が無く全閉した場合も含む） |
