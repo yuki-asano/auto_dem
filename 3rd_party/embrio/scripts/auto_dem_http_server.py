@@ -290,6 +290,11 @@ class FrankaMonitor:
 
     def recover(self):
         """Send the recovery goal, then wait for a robot state taken after it; raise unless that state is clear."""
+        # franka_control before 0.10.2 blocks a goal sent while a controller runs fault-free,
+        # and the stuck goal then clears the next reflex unasked.
+        state = self.state()
+        if not self.fault(state):
+            return state
         if not self._recovery.wait_for_server(rospy.Duration(5.0)):
             raise FrankaUnavailable("%s is not served: is franka_control up?" % RECOVERY_ACTION)
         self._recovery.send_goal(self._goal())

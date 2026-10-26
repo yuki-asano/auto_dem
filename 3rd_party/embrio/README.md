@@ -135,7 +135,7 @@ end-coords とは独立です。
 | POST | `/fr3/gripper/grasp` | `{"width": mm, "speed": mm/s, "force": N, "epsilon_inner": mm, "epsilon_outer": mm}` → `{"achieved": mm}`。grasp アクションで物に当たるまで閉じ、`force` で保持する。止まった幅が `width - epsilon_inner` 〜 `width + epsilon_outer`（既定は各 5 mm）に入らなければエラー（物が無く全閉した場合も含む） |
 | GET | `/fr3/gripper/position` | `{"position": mm}` |
 | POST | `/fr3/abort` | `/abort` と同じ |
-| POST | `/fr3/errors/clear` | 衝突などで止まった（ランプが赤の）ロボットを、franka_control の error recovery アクションで復帰させる → `{"robot_mode", "errors"}`。復帰後の状態にまだ異常があれば 500、アクションサーバが無ければ 503、腕が使用中なら 409。腕は動かない |
+| POST | `/fr3/errors/clear` | 衝突などで止まった（ランプが赤の）ロボットを、franka_control の error recovery アクションで復帰させる → `{"robot_mode", "errors"}`。異常が無ければアクションを送らず今の状態を返す（0.10.2 より前の franka_control は、異常の無いときの goal が返らない）。復帰後の状態にまだ異常があれば 500、アクションサーバが無ければ 503、腕が使用中なら 409。腕は動かない |
 
 `achieved` はアクションの完了直後ではなく、幅が 0.3 s 動かなくなってから読みます（完了直後の値は指の動きに
 遅れるため）。3 s 待っても落ち着かなければエラーです。
