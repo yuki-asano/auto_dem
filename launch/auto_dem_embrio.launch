@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+
+<launch>
+  <include file="$(find auto_dem)/launch/auto_dem.launch" />  <!-- auto_dem -->
+  <include file="$(find auto_dem)/3rd_party/embrio/launch/auto_dem_http_server.launch" />  <!-- connect embrio -->
+</launch>
