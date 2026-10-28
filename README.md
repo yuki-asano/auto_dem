@@ -25,7 +25,10 @@ roslaunch auto_dem fr3_dielec.launch
 **Manager PC (lion)**
 ```
 [TERMINAL1]
-roslaunch auto_dem auto_dem.launch  # rosbridge_server, robot_manip
+roslaunch auto_dem auto_dem_embrio.launch  # embrio connection
+
+or
+roslaunch auto_dem auto_dem.launch  # only auto_dem (rosbridge_server, robot_manip)
 ```
 
 **Measurement PC (WSL)**
