@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!-- embrio control server: the roseus RPC node, the HTTP server in front of it, and the
+     rosbridge the measurement PC bridges /dielectrometer_cmd through, i.e. the stock
+     `auto_dem.launch` with its trigger node swapped out (the swap still takes
+     /start_dielectrometer_manip). Do not run both at once.
+     devices picks what the server serves: any of dem,fr3,camera. -->
+<launch>
+  <arg name="port" default="8302" />
+  <arg name="devices" default="dem,fr3,camera" />
+
+  <group ns="auto_dem">
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
+  </group>
+
+  <node name="auto_dem_embrio_manip" pkg="auto_dem" type="auto_dem_embrio_node.l" output="screen" />
+  <node name="auto_dem_http" pkg="auto_dem" type="auto_dem_http_server.py"
+        args="--port $(arg port) --devices $(arg devices)" output="screen" />
+</launch>

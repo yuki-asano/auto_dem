@@ -25,26 +25,19 @@ roslaunch auto_dem fr3_dielec.launch
 **Manager PC (lion)**
 ```
 [TERMINAL1]
-roslaunch auto_dem auto_dem.launch  # rosbridge_server, robot_manip
-```
+roslaunch auto_dem auto_dem_embrio.launch  # embrio connection
 
-- backup for press process combination
-    roscore separation (due to collision of joint_controllers)
-    ```
-    [TERMINAL2]
-    roslaunch wsl2_ros_bridge connect.launch remote_host:=192.168.0.6 connections_file:="/home/utokyo/catkin_ws/src/auto_dem/config/connections_fr3.csv" local_port:=9080 # 192.168.0.6: koala (PC for press process operation)
-    ```
+or
+roslaunch auto_dem auto_dem.launch  # only auto_dem (rosbridge_server, robot_manip)
+```
 
 **Measurement PC (WSL)**
 ```
 [GUI]
-ShockLine.exeを管理者権限で起動
+ShockLine.exeを起動 <-管理者権限
 
-[TERMINAL1]
-roscore
-
-[TERMINAL2]　<- 管理者権限で実行
-rosrun aet_instrument DielectricCalculator_server.py
+[TERMINAL1]　<- 管理者権限で実行
+roslaunch aet_instrument dielectric_calculator_server.launch
 ```
 
 ### Automation demo
