@@ -6,12 +6,6 @@
      <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
   </group>
 
-  <!-- <!-\- rosbridge client for multiple roscore -\-> -->
-  <!-- <include file="$(find wsl2_ros_bridge)/launch/connect.launch"> -->
-  <!--   <arg name="remote_host" value="192.168.0.6" /> -->
-  <!--   <arg name="connections_file" value="$(find auto_dem)/config/connections_fr3.csv" /> -->
-  <!-- </include> -->
-
   <!-- fr3 robot -->
   <node name="dielectrometer_manip" pkg="auto_dem" type="dielectrometer-manip-node.l" />
 

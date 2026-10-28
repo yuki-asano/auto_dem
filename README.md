@@ -28,13 +28,6 @@ roslaunch auto_dem fr3_dielec.launch
 roslaunch auto_dem auto_dem.launch  # rosbridge_server, robot_manip
 ```
 
-- backup for press process combination
-    roscore separation (due to collision of joint_controllers)
-    ```
-    [TERMINAL2]
-    roslaunch wsl2_ros_bridge connect.launch remote_host:=192.168.0.6 connections_file:="/home/utokyo/catkin_ws/src/auto_dem/config/connections_fr3.csv" local_port:=9080 # 192.168.0.6: koala (PC for press process operation)
-    ```
-
 **Measurement PC (WSL)**
 ```
 [GUI]

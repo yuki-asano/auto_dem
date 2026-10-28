@@ -1,3 +1,0 @@
-Topic,Msg Type,Direction
-/start_dielectrometer_manip,std_msgs/Bool,b-to-a
-/polymer_evaluation/polymer_thickness,std_msgs/Float32,b-to-a
