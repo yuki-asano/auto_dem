@@ -5,13 +5,9 @@ auto_dem の計測シーケンス（ポリマー膜のピックアップ → 10 
 合同会社 embrio 側のラボオーケストレータから auto_dem をリモート実行するために追加しました。
 
 同じサーバが **FR3 の基本動作**（姿勢の読み出し・関節移動・直線移動・グリッパ）と、
-この PC に接続した **USB カメラ**の中継も行います。embrio 側は AMR で運んだトレイを FR3 で受け取り、
+操作 PCに接続した **USB カメラ**の中継も行います。embrio 側は AMR で運んだトレイを FR3 で受け取り、
 スライダの上で傾けて膜を落とし、トレイを AMR へ戻すところまでを自分で振り付け、
 その後の計測シーケンスを `/start` で起動します。`--devices` を指定すると、扱う装置を絞れます。
-
-**auto_dem 本体のファイルは一つも変更していません。** 追加物はすべてこのディレクトリ
-（`3rd_party/embrio/`）に閉じており、明示的に起動しない限り何も動きません。既存の
-`roslaunch auto_dem auto_dem.launch` の使い方は従来どおりです。
 
 | ファイル | 内容 |
 | --- | --- |
@@ -20,7 +16,7 @@ auto_dem の計測シーケンス（ポリマー膜のピックアップ → 10 
 | `scripts/embrio_camera.py` | USB カメラの中継処理（上記サーバから import される） |
 | `launch/auto_dem_http_server.launch` | 上記 2 ノードと rosbridge を起動する launch ファイル（`auto_dem.launch` の代わりに使う） |
 
-**この PC への追加インストールはありません。** 依存は次のとおりで、いずれも既にあるものです。
+依存は次のとおりです。
 
 - 計測・FR3（`dem` / `fr3`）: Python 3.8 の標準ライブラリ、rospy、`roseus`（StringString サービス型）、auto_dem とその依存（panda_eus など）。`fr3` はさらに actionlib と franka_msgs（franka_ros の一部）
 - カメラ（`camera`）: ROS Noetic に含まれる `python3-opencv`（cv2 / numpy）
@@ -37,7 +33,7 @@ FR3 を動かす口もありませんでした。このサーバはその入口�
 
 ## 起動方法
 
-操作 PC（lion）では `roslaunch auto_dem auto_dem.launch` の**代わりに**
+操作 PC では `roslaunch auto_dem auto_dem.launch` の**代わりに**
 `roslaunch auto_dem auto_dem_http_server.launch` を起動します。この launch は `auto_dem.launch` と同じ
 rosbridge（9090 番）を含み、`dielectrometer_manip` ノードだけを embrio 用のノードに置き換えたものです。
 embrio 用のノードも `/start_dielectrometer_manip` を受け取り、`dielectrometer-manip-node.l` の `cb` と
@@ -45,17 +41,16 @@ embrio 用のノードも `/start_dielectrometer_manip` を受け取り、`diele
 `rostopic pub -1 /start_dielectrometer_manip std_msgs/Bool "data: true"` はそのまま使えます。
 それ以外の PC の手順は上流の README のとおりで、**起動する順番だけ守ってください。**
 
-1. ロボット PC（tiger）: `roscore`、`roslaunch auto_dem fr3_dielec.launch`
-2. 操作 PC（lion）: `roslaunch auto_dem auto_dem_http_server.launch`（下記）
-3. 誘電率計 PC（WSL）: ShockLine、`roscore`、`roslaunch wsl2_ros_bridge connect.launch remote_host:=<lion> ...`、
-   `rosrun aet_instrument control.py`
+1. ロボット PC: `roscore`、`roslaunch auto_dem fr3_dielec.launch`
+2. 操作 PC: `roslaunch auto_dem auto_dem_http_server.launch`（下記）
+3. 誘電率計 PC（WSL）: ShockLine、`roscore`、`rosrun aet_instrument DielectricCalculator_server.py`（管理者権限）
 
-**2 は 3 より先に起動します。** 誘電率計 PC は `wsl2_ros_bridge`（rosbridge どうしを roslibpy でつなぐ
-パッケージ）で lion の rosbridge に接続して `/dielectrometer_cmd` を受け取ります。このノードは起動時に
-lion の rosbridge へつなぎに行き、つながらなければ connect.launch ごと終了します。同じ理由で、
-**lion 側を再起動したら誘電率計 PC の connect.launch も起動し直してください。**
+**2 は 3 より先に起動します。** 誘電率計 PC の `DielectricCalculator_server.py` は、起動時に roslibpy で
+操作 PC の rosbridge（`192.168.0.44:9090`）へつなぎに行き、そこから `/dielectrometer_cmd` を受け取ります。
+rosbridge がまだ上がっていなければ接続に失敗して終了し、接続が切れたときも終了します。同じ理由で、
+**操作 PC 側を再起動したら誘電率計 PC の `DielectricCalculator_server.py` も起動し直してください。**
 
-lion では catkin workspace を source した端末（`auto_dem.launch` を起動していたのと同じ端末）から:
+操作 PC では catkin workspace を source した端末（`auto_dem.launch` を起動していたのと同じ端末）から:
 
 ```bash
 # auto_dem が見つかるか確認（パスが出れば source 済み）
@@ -73,7 +68,7 @@ rosrun auto_dem auto_dem_embrio_node.l
 rosrun auto_dem auto_dem_http_server.py --port 8302
 ```
 
-誘電率計 PC がつながったかは lion で確認できます。`/dielectrometer_cmd` の Subscribers に
+誘電率計 PC がつながったかは操作 PC で確認できます。`/dielectrometer_cmd` の Subscribers に
 rosbridge のノードが出ていれば、計測器まで指令が届きます。出ていないまま計測を始めると、腕は動いても
 計測器は動きません（指令は送りっぱなしなので、エラーにもなりません）。
 
@@ -145,7 +140,7 @@ end-coords とは独立です。
 
 ### カメラの中継（`camera`）
 
-中継はキャプチャのオブジェクトをこの PC 側に置くだけの薄い層です。カメラ設定の検証は embrio 側が行います。
+中継はキャプチャのオブジェクトを操作 PC 側に置くだけの薄い層です。カメラ設定の検証は embrio 側が行います。
 
 | Method | Path | 説明 |
 | --- | --- | --- |
@@ -158,11 +153,11 @@ end-coords とは独立です。
 疎通確認:
 
 ```bash
-curl http://<lion>:8302/health
-curl http://<lion>:8302/fr3/pose
-curl -X POST http://<lion>:8302/start -H 'Content-Type: application/json' \
+curl http://<操作 PC>:8302/health
+curl http://<操作 PC>:8302/fr3/pose
+curl -X POST http://<操作 PC>:8302/start -H 'Content-Type: application/json' \
      -d '{"thickness": 0.355, "sample_name": "sample1", "file_path": "C:/Users/test/Desktop/asano/robot_exp.csv"}'
-curl http://<lion>:8302/status
+curl http://<操作 PC>:8302/status
 ```
 
 ## 設計上の判断・制約
@@ -174,28 +169,13 @@ curl http://<lion>:8302/status
   `ping` 以外の呼び出しを「the arm is busy」で拒否します（HTTP 側のスロットは空いて見えるため、
   HTTP では 409 ではなく 500 になります）。腕が使用中のときに届いたトピックは、エラーをログに出して捨てます。
   トピックで起動した処理は `/status` に現れませんが、`/abort` では止められます。
-  `cb` の中身を上流で変えたときは、`auto_dem_embrio_node.l` の `embrio-start-dielectrometer-manip` も合わせて直してください。
+  `auto_dem_embrio_node.l` の `embrio-start-dielectrometer-manip` は `cb` と同じ処理です。
 - **`/abort` は動作中の `:angle-vector` をキャンセルし、走っている euslisp の処理を打ち切ります。**
   計測器への指令（`dielectrometer_cmd`）は取り消せないので、計測中の誘電率計はそのまま動き続けます。
 - **roseus ノードは単一スレッドです。** 処理中は `:wait-interpolation` の中でしか ROS のメッセージを
-  受け取らないため、中断が届くのは腕が動いている区間だけです（下記「未検証」）。
+  受け取らないため、中断が届くのは腕が動いている区間だけです。
 - **引数の検証は HTTP サーバ側と roseus ノード側の両方で行います。** 不正な値を euslisp 側へ渡すと
   デバッガに落ちてノードが止まるため、euslisp 側ではエラーハンドラを差し替えて JSON のエラーとして返します。
 - **run の状態はプロセス内メモリのみ保持します。** サーバを再起動すると走行中 run の状態は失われます
   （シーケンス自体は roseus ノード側で最後まで走ります）。
 - 認証はありません。ラボ内 LAN での利用を前提としています。
-
-## 未検証の事項
-
-実機でまだ確かめていない点です。確認でき次第、この節を更新します。
-
-- `/abort` が `:wait-interpolation` の途中で届くこと（robot-interface の待ちループが `ros::spin-once` を
-  回していることが前提）。届かない場合は、動作の区切りまで止まりません。
-- 計測待ち（`unix::usleep` の 20 秒）の間は中断が届かないこと。
-- `/fr3/gripper/grasp` で物をつかんだときの `achieved` と成否。
-- `/fr3/move-position` の直線分割（既定 5 mm）で、分割点の間の経路が直線からどれだけ外れるか。
-- roseus ノードの irtviewer に必要な DISPLAY が、lion の運用環境（リモート起動時）で得られること。
-
-## 連絡先
-
-不明点や変更のご要望は embrio（石川）までお願いします。
