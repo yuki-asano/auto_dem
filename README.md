@@ -34,13 +34,10 @@ roslaunch auto_dem auto_dem.launch  # only auto_dem (rosbridge_server, robot_man
 **Measurement PC (WSL)**
 ```
 [GUI]
-ShockLine.exeを管理者権限で起動
+ShockLine.exeを起動 <-管理者権限
 
-[TERMINAL1]
-roscore
-
-[TERMINAL2]　<- 管理者権限で実行
-rosrun aet_instrument DielectricCalculator_server.py
+[TERMINAL1]　<- 管理者権限で実行
+roslaunch aet_instrument dielectric_calculator_server.launch
 ```
 
 ### Automation demo
