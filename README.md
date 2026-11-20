@@ -31,7 +31,7 @@ or
 roslaunch auto_dem auto_dem.launch  # only auto_dem (rosbridge_server, robot_manip)
 ```
 
-**Measurement PC (WSL)**
+**Measurement PC (WSL, camel)**
 ```
 [GUI]
 ShockLine.exeを起動 <-管理者権限
@@ -50,6 +50,7 @@ rostopic pub -1 /start_dielectrometer_manip std_msgs/Bool "data: true"  # publis
 ```
 roscd auto_dem/euslisp
 roseus dielectrometer-manip.l
+(generate-demanip-instance)
 ```
 
 ```
