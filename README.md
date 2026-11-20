@@ -50,6 +50,7 @@ rostopic pub -1 /start_dielectrometer_manip std_msgs/Bool "data: true"  # publis
 ```
 roscd auto_dem/euslisp
 roseus dielectrometer-manip.l
+(generate-demanip-instance)
 ```
 
 ```
