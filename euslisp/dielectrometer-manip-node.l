@@ -9,16 +9,13 @@
 (defun cb (msg)
   (if (send msg :data)
       (progn
-        ;; wait for conveyor transoprt
-        ;;(print "start dielec manip in 20 sec")
-        ;;(unix::usleep (* 20 1000 1000))
-
         ;; manip
-        ;;(pick-polymer-and-measure-40-28-10 :do-measure t :insert-until-contact t)
-        ;;(pick-polymer-and-measure-40-28-10 :do-measure t :insert-until-contact nil)
-
-        ;; test
-        (measure-40G :do-measure t :insert-until-contact nil)
+        (pick-polymer-and-measure-40-28-10 :do-measure t :insert-until-contact t)
+        ;;
+        ;; for test
+        ;; (measure-40G :do-measure nil :insert-until-contact nil)
+        ;; (pick-polymer-and-measure-40-28-10 :do-measure nil :insert-until-contact nil)
+        ;; (pick-polymer-and-measure-40-28-10 :do-measure t :insert-until-contact nil)
         )
     ))
 
@@ -29,10 +26,7 @@
   (warn "Start dielectrometer_manip_node~%")
 
   ;; generate instance
-  (setq *dem* (instance dielectrometer-manip :init))
-
-  ;; draw
-  (objects *display-objects*)
+  (generate-dem-instance) ;; instance and draw
 
   (warn "Waiting for motion flag~%")
   (do-until-key

@@ -562,13 +562,7 @@
   )  ;; dielectrometer-manip
 
 
-;; settings
-(setq *dem* (instance dielectrometer-manip :init)) ;; dem: dielectrometer-manip
-(send *robot* :reset-pose)
-(send *irtviewer* :draw-objects)
-
-
-;; functions
+;;;;;;;;;; functions ;;;;;;;;;;
 (defun pick-polymer-from-slider
     (&key (start-reset-pose t)
           (start-reset-pose-time 7000)
@@ -751,8 +745,18 @@
   (send *dem* :reset-pose :time 8000)
   )
 
+(defun generate-dem-instance ()
+  (setq *dem* (instance dielectrometer-manip :init)) ;; dem: dielectrometer-manip
+  (send *robot* :reset-pose)
+  (objects *display-objects*)
+  )
+
 
 (warn "(send *dem* :change-run-mode nil)~%")
 (warn "(send *dem* :change-wue-mode nil)~%")
 (warn "(pick-polymer-and-measure-40-28-10 :do-measure t :insert-until-contact t)~%")
 (warn "(pick-polymer-and-measure-40-28-10-ntimes-each :measure-times 3 :do-measure t :insert-until-contact t)~%")
+
+
+;;;;;;;;;; for test ;;;;;;;;;;
+;; (generate-dem-instance)
