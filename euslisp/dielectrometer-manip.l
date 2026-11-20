@@ -1,8 +1,5 @@
 #!/usr/bin/env roseus
 
-;; todo:
-;; - extract common part for manipulation
-
 (load "package://auto_dem/euslisp/load-dielectrometer-exp.l")
 (load "package://robot_interface/euslisp/robot-manipulation.l")
 (load "package://robot_interface/euslisp/generate-coords.l")
@@ -132,6 +129,7 @@
    )
   ;;
   ;; end-coords settings. use :move-to :world method to overwrite coordinates
+  ;; todo: 呼び出す度に回転するようなので,相対回転から絶対姿勢の指定に変更.
   (:set-endcoords-button-upside
    ()
    (send *robot* :rarm :end-coords :move-to
@@ -160,8 +158,8 @@
    ;; generation
    ;; (send *robot* :reset-pose)
    ;; (generate-coords tgc-pick-polymer-init *polymer-gp-manip-coords* #f(-100 0 60) #(0 0 0))
-   ;; (send *dem* :solve-ik-rarm :tgc tgc-pick-polymer-init :ra nil) ;; at first, solve ik with rotation-axis nil
-   ;; (send *dem* :solve-ik-rarm :tgc tgc-pick-polymer-init :ra t)
+   ;; (send *demanip* :solve-ik-rarm :tgc tgc-pick-polymer-init :ra nil) ;; at first, solve ik with rotation-axis nil
+   ;; (send *demanip* :solve-ik-rarm :tgc tgc-pick-polymer-init :ra t)
    (send *robot* :angle-vector
          #f(110.801 66.0939 -49.5549 -101.111 -74.2137 131.909 107.487)
          )
@@ -175,8 +173,8 @@
    ;; generation
    ;; (send *robot* :reset-pose)
    ;; (generate-coords tgc-insert-polymer-10G-init *10G-manip-coords* #f(-100 -30 20) #(0 0 0))
-   ;; (send *dem* :solve-ik-rarm :tgc tgc-insert-polymer-10G-init :ra nil) ;; at first, solve ik with rotation-axis nil
-   ;; (send *dem* :solve-ik-rarm :tgc tgc-insert-polymer-10G-init :ra t)
+   ;; (send *demanip* :solve-ik-rarm :tgc tgc-insert-polymer-10G-init :ra nil) ;; at first, solve ik with rotation-axis nil
+   ;; (send *demanip* :solve-ik-rarm :tgc tgc-insert-polymer-10G-init :ra t)
    (send *robot* :angle-vector
          ;; - bottun upside pose. button downside pose is bad.
          ;; - j0 should be minus.
@@ -189,10 +187,10 @@
   (:28G-init-pose
    (&key (time 8000))
    ;; generation
-   ;; (send *dem* :10G-init-pose)  ;; not reset-pose
+   ;; (send *demanip* :10G-init-pose)  ;; not reset-pose
    ;; (generate-coords tgc-insert-polymer-28G-init *28G-manip-coords* #f(-100 0 20) #(0 0 0))
-   ;; (send *dem* :solve-ik-rarm :tgc tgc-insert-polymer-28G-init :ra nil) ;; at first, solve ik with rotation-axis nil
-   ;; (send *dem* :solve-ik-rarm :tgc tgc-insert-polymer-28G-init :ra t)
+   ;; (send *demanip* :solve-ik-rarm :tgc tgc-insert-polymer-28G-init :ra nil) ;; at first, solve ik with rotation-axis nil
+   ;; (send *demanip* :solve-ik-rarm :tgc tgc-insert-polymer-28G-init :ra t)
    (send *robot* :angle-vector
          ;; - bottun upside pose. button downside pose is bad.
          ;; - from 10G-init-pose. from reset pose is bad
@@ -208,8 +206,8 @@
    ;; generation
    ;; (send *robot* :reset-pose)
    ;; (generate-coords tgc-insert-polymer-40G-init *40G-manip-coords* #f(-100 0 0) #(0 0 0))
-   ;; (send *dem* :solve-ik-rarm :tgc tgc-insert-polymer-40G-init :ra nil) ;; rotation-axis nil first
-   ;; (send *dem* :solve-ik-rarm :tgc tgc-insert-polymer-40G-init :ra t)
+   ;; (send *demanip* :solve-ik-rarm :tgc tgc-insert-polymer-40G-init :ra nil) ;; rotation-axis nil first
+   ;; (send *demanip* :solve-ik-rarm :tgc tgc-insert-polymer-40G-init :ra t)
    (send *robot* :angle-vector
          ;; - button upside pose
          ;; - from reset-pose. from 28G-init-pose is bad (j4 is plus).
@@ -570,20 +568,20 @@
           (end-reset-pose-time 10000)
           )
   (when start-reset-pose
-    (send *dem* :reset-pose :time start-reset-pose-time))
-  (send *dem* :pick-polymer-from-slider :init-pose-time 10000 :end-pose-time 5000)
+    (send *demanip* :reset-pose :time start-reset-pose-time))
+  (send *demanip* :pick-polymer-from-slider :init-pose-time 10000 :end-pose-time 5000)
   (when end-reset-pose
-    (send *dem* :reset-pose :time end-reset-pose-time))
+    (send *demanip* :reset-pose :time end-reset-pose-time))
   )
 
 (defun measure-test
     ()
   (format t "measuring 10G blank~%")
-  (send *dem* :measure-blank-10G)
+  (send *demanip* :measure-blank-10G)
   (format t "measuring 28G blank~%")
-  (send *dem* :measure-blank-28G)
+  (send *demanip* :measure-blank-28G)
   (format t "measuring 40G blank~%")
-  (send *dem* :measure-blank-40G)
+  (send *demanip* :measure-blank-40G)
   )
 
 (defun measure-10G
@@ -598,12 +596,12 @@
           (insert-until-contact nil)
           )
   (when start-reset-pose
-    (send *dem* :reset-pose :time start-reset-pose-time))
+    (send *demanip* :reset-pose :time start-reset-pose-time))
   (when do-measure
-    (send *dem* :measure-blank-10G))
-  (send *dem* :insert-polymer-10G :init-pose-time 10000 :end-pose-time 5000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact)
+    (send *demanip* :measure-blank-10G))
+  (send *demanip* :insert-polymer-10G :init-pose-time 10000 :end-pose-time 5000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact)
   (when end-reset-pose
-    (send *dem* :reset-pose :time end-reset-pose-time))
+    (send *demanip* :reset-pose :time end-reset-pose-time))
   )
 
 (defun measure-28G
@@ -618,12 +616,12 @@
           (insert-until-contact nil)
           )
   (when start-reset-pose
-    (send *dem* :reset-pose :time start-reset-pose-time))
+    (send *demanip* :reset-pose :time start-reset-pose-time))
   (when do-measure
-    (send *dem* :measure-blank-28G))
-  (send *dem* :insert-polymer-28G :init-pose-time 7000 :end-pose-time 5000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact)
+    (send *demanip* :measure-blank-28G))
+  (send *demanip* :insert-polymer-28G :init-pose-time 7000 :end-pose-time 5000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact)
   (when end-reset-pose
-    (send *dem* :reset-pose :time end-reset-pose-time))
+    (send *demanip* :reset-pose :time end-reset-pose-time))
   )
 
 (defun measure-40G
@@ -638,12 +636,12 @@
           (insert-until-contact nil)
           )
   (when start-reset-pose
-    (send *dem* :reset-pose :time start-reset-pose-time))
+    (send *demanip* :reset-pose :time start-reset-pose-time))
   (when do-measure
-    (send *dem* :measure-blank-40G))
-  (send *dem* :insert-polymer-40G :init-pose-time 10000 :end-pose-time 5000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact)
+    (send *demanip* :measure-blank-40G))
+  (send *demanip* :insert-polymer-40G :init-pose-time 10000 :end-pose-time 5000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact)
   (when end-reset-pose
-    (send *dem* :reset-pose :time end-reset-pose-time))
+    (send *demanip* :reset-pose :time end-reset-pose-time))
   )
 
 (defun measure-10-28-40
@@ -673,27 +671,27 @@
      (insert-until-contact nil)
      )
   ;; initial pose
-  (send *dem* :reset-pose :time 5000)
+  (send *demanip* :reset-pose :time 5000)
   ;; 10G
-  (send *dem* :10G-init-pose :time 8000)
+  (send *demanip* :10G-init-pose :time 8000)
   (dotimes (n measure-times)
     (when do-measure
-      (send *dem* :measure-blank-10G))
-    (send *dem* :insert-polymer-10G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
+      (send *demanip* :measure-blank-10G))
+    (send *demanip* :insert-polymer-10G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
   ;; 28G
-  (send *dem* :28G-init-pose :time 3000)
+  (send *demanip* :28G-init-pose :time 3000)
   (dotimes (n measure-times)
     (when do-measure
-      (send *dem* :measure-blank-28G))
-    (send *dem* :insert-polymer-28G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
-  (send *dem* :reset-pose :time 8000) ;; to avoid collision to table. trajectory is wider due to large pose changes
+      (send *demanip* :measure-blank-28G))
+    (send *demanip* :insert-polymer-28G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
+  (send *demanip* :reset-pose :time 8000) ;; to avoid collision to table. trajectory is wider due to large pose changes
   ;; 40G
-  (send *dem* :40G-init-pose :time 8000)
+  (send *demanip* :40G-init-pose :time 8000)
   (dotimes (n measure-times)
     (when do-measure
-      (send *dem* :measure-blank-40G))
-    (send *dem* :insert-polymer-40G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
-  (send *dem* :reset-pose :time 8000)
+      (send *demanip* :measure-blank-40G))
+    (send *demanip* :insert-polymer-40G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
+  (send *demanip* :reset-pose :time 8000)
   )
 
 (defun pick-polymer-and-measure-40-28-10
@@ -726,37 +724,34 @@
   ;; pick polymer
   (pick-polymer-from-slider :start-reset-pose t :start-reset-pose-time 7000 :end-reset-pose nil)
   ;; 40G
-  (send *dem* :40G-init-pose :time 8000)
+  (send *demanip* :40G-init-pose :time 8000)
   (dotimes (n measure-times)
-    (when do-measure (send *dem* :measure-blank-40G))
-    (send *dem* :insert-polymer-40G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
-  (send *dem* :reset-pose :time 8000)  ;; large motion at 28G-40G transition
+    (when do-measure (send *demanip* :measure-blank-40G))
+    (send *demanip* :insert-polymer-40G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
+  (send *demanip* :reset-pose :time 8000)  ;; large motion at 28G-40G transition
   ;; 28G
-  (send *dem* :28G-init-pose :time 8000)
+  (send *demanip* :28G-init-pose :time 8000)
   (dotimes (n measure-times)
-    (when do-measure (send *dem* :measure-blank-28G))
-    (send *dem* :insert-polymer-28G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
+    (when do-measure (send *demanip* :measure-blank-28G))
+    (send *demanip* :insert-polymer-28G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
   ;; no reset-pose here
   ;; 10G
-  (send *dem* :10G-init-pose :time 3000)
+  (send *demanip* :10G-init-pose :time 3000)
   (dotimes (n measure-times)
-    (when do-measure (send *dem* :measure-blank-10G))
-    (send *dem* :insert-polymer-10G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
-  (send *dem* :reset-pose :time 8000)
+    (when do-measure (send *demanip* :measure-blank-10G))
+    (send *demanip* :insert-polymer-10G :init-pose-time 1000 :end-pose-time 3000 :thickness thickness :sample-name sample-name :file-path file-path :do-measure do-measure :insert-until-contact insert-until-contact))
+  (send *demanip* :reset-pose :time 8000)
   )
 
-(defun generate-dem-instance ()
-  (setq *dem* (instance dielectrometer-manip :init)) ;; dem: dielectrometer-manip
+(defun generate-demanip-instance ()
+  (setq *demanip* (instance dielectrometer-manip :init)) ;; demanip: dielectrometer-manip
   (send *robot* :reset-pose)
   (objects *display-objects*)
   )
 
 
-(warn "(send *dem* :change-run-mode nil)~%")
-(warn "(send *dem* :change-wue-mode nil)~%")
+(warn "(send *demanip* :change-run-mode nil)~%")
+(warn "(send *demanip* :change-wue-mode nil)~%")
+(warn "(generate-demanip-instance)~%")
 (warn "(pick-polymer-and-measure-40-28-10 :do-measure t :insert-until-contact t)~%")
 (warn "(pick-polymer-and-measure-40-28-10-ntimes-each :measure-times 3 :do-measure t :insert-until-contact t)~%")
-
-
-;;;;;;;;;; for test ;;;;;;;;;;
-;; (generate-dem-instance)

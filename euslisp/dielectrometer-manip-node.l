@@ -26,7 +26,7 @@
   (warn "Start dielectrometer_manip_node~%")
 
   ;; generate instance
-  (generate-dem-instance) ;; instance and draw
+  (generate-demanip-instance) ;; instance and draw
 
   (warn "Waiting for motion flag~%")
   (do-until-key
